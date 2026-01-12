@@ -1,0 +1,14 @@
+---
+import { AUTHOR, SITE_TITLE } from '../consts';
+const today = new Date();
+---
+
+<footer class="py-8 px-4 bg-[#2d3e28] text-[#f5f0e6] text-center">
+	<p class="mb-2">
+		<strong>{SITE_TITLE}</strong><br />
+		Ein Blog von {AUTHOR.name} aus dem {AUTHOR.location}
+	</p>
+	<p class="text-sm opacity-80">
+		&copy; {today.getFullYear()} {AUTHOR.name}. Waidmannsheil!
+	</p>
+</footer>

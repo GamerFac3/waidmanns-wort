@@ -1,0 +1,110 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import { SITE_DESCRIPTION, SITE_TITLE, CATEGORIES, AUTHOR } from '../consts';
+import { supabase } from '../lib/supabase';
+
+// Fetch pending titles (not yet generated) - max 5
+const { data: pendingTitles } = await supabase
+	.from('article_titles')
+	.select('*')
+	.eq('is_generated', false)
+	.order('created_at', { ascending: false })
+	.limit(5);
+
+// Fetch generated articles with their titles
+const { data: generatedArticles } = await supabase
+	.from('article_titles')
+	.select(`
+		*,
+		articles (*)
+	`)
+	.eq('is_generated', true)
+	.order('created_at', { ascending: false })
+	.limit(20);
+
+function getCategoryName(categoryId: string): string {
+	const cat = CATEGORIES.find(c => c.id === categoryId);
+	return cat?.name || categoryId;
+}
+---
+
+<!doctype html>
+<html lang="de">
+	<head>
+		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
+	</head>
+	<body>
+		<Header />
+		<main>
+			<div class="intro">
+				<h1>{SITE_TITLE}</h1>
+				<p>{SITE_DESCRIPTION}</p>
+				<p><em>Von {AUTHOR.name} - {AUTHOR.experience}</em></p>
+			</div>
+
+			{pendingTitles && pendingTitles.length > 0 && (
+				<section>
+					<div class="section-header">
+						<h2>Neue Beiträge</h2>
+					</div>
+					<p style="color: var(--text-light); font-size: 0.9em;">
+						Diese Artikel werden beim ersten Aufruf frisch für Sie verfasst.
+					</p>
+					{pendingTitles.map((title) => (
+						<article class="article-card">
+							<h3>
+								<a href={`/artikel/${title.id}`}>
+									{title.title}
+								</a>
+								<span class="new-badge">NEU</span>
+							</h3>
+							<p class="description">{title.description}</p>
+							<div class="meta">
+								<span class="category-badge">{getCategoryName(title.category)}</span>
+							</div>
+						</article>
+					))}
+				</section>
+			)}
+
+			{generatedArticles && generatedArticles.length > 0 && (
+				<section>
+					<div class="section-header">
+						<h2>Archiv</h2>
+					</div>
+					{generatedArticles.map((item) => (
+						<article class="article-card">
+							<h3>
+								<a href={`/artikel/${item.id}`}>
+									{item.title}
+								</a>
+							</h3>
+							<p class="description">{item.description}</p>
+							<div class="meta">
+								<span class="category-badge">{getCategoryName(item.category)}</span>
+								{item.articles && item.articles[0] && (
+									<span>
+										{new Date(item.articles[0].generated_at).toLocaleDateString('de-DE', {
+											year: 'numeric',
+											month: 'long',
+											day: 'numeric'
+										})}
+									</span>
+								)}
+							</div>
+						</article>
+					))}
+				</section>
+			)}
+
+			{(!pendingTitles || pendingTitles.length === 0) && (!generatedArticles || generatedArticles.length === 0) && (
+				<div class="intro">
+					<p>Noch keine Artikel vorhanden. Die ersten Beiträge werden bald erscheinen!</p>
+				</div>
+			)}
+		</main>
+		<Footer />
+	</body>
+</html>

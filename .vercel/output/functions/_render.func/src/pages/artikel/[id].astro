@@ -1,0 +1,141 @@
+---
+import BaseHead from '../../components/BaseHead.astro';
+import Footer from '../../components/Footer.astro';
+import Header from '../../components/Header.astro';
+import { SITE_TITLE, CATEGORIES, AUTHOR } from '../../consts';
+import { supabase } from '../../lib/supabase';
+import { generateArticleContent } from '../../lib/claude';
+
+const { id } = Astro.params;
+
+if (!id) {
+	return Astro.redirect('/');
+}
+
+// Get the title info
+const { data: titleData, error: titleError } = await supabase
+	.from('article_titles')
+	.select('*')
+	.eq('id', id)
+	.single();
+
+if (titleError || !titleData) {
+	return Astro.redirect('/');
+}
+
+// Check if article already exists
+let { data: articleData } = await supabase
+	.from('articles')
+	.select('*')
+	.eq('title_id', id)
+	.single();
+
+// If not exists, generate it
+if (!articleData) {
+	try {
+		const content = await generateArticleContent(
+			titleData.title,
+			titleData.description,
+			titleData.category
+		);
+
+		// Save the article
+		const { data: newArticle, error: insertError } = await supabase
+			.from('articles')
+			.insert({
+				title_id: id,
+				content: content,
+			})
+			.select()
+			.single();
+
+		if (!insertError && newArticle) {
+			articleData = newArticle;
+
+			// Mark title as generated
+			await supabase
+				.from('article_titles')
+				.update({ is_generated: true })
+				.eq('id', id);
+		}
+	} catch (err) {
+		console.error('Generation error:', err);
+	}
+}
+
+function getCategoryName(categoryId: string): string {
+	const cat = CATEGORIES.find(c => c.id === categoryId);
+	return cat?.name || categoryId;
+}
+
+// Simple markdown to HTML conversion
+function renderMarkdown(text: string): string {
+	return text
+		// Headers
+		.replace(/^### (.*$)/gm, '<h3>$1</h3>')
+		.replace(/^## (.*$)/gm, '<h2>$1</h2>')
+		.replace(/^# (.*$)/gm, '<h1>$1</h1>')
+		// Bold and italic
+		.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
+		.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+		.replace(/\*(.*?)\*/g, '<em>$1</em>')
+		// Lists
+		.replace(/^\- (.*$)/gm, '<li>$1</li>')
+		.replace(/(<li>.*<\/li>)\n(?!<li>)/g, '$1</ul>\n')
+		.replace(/(?<!<\/ul>\n)(<li>)/g, '<ul>$1')
+		// Paragraphs
+		.replace(/\n\n/g, '</p><p>')
+		.replace(/^(?!<[hul])(.+)$/gm, '<p>$1</p>')
+		// Clean up
+		.replace(/<p><\/p>/g, '')
+		.replace(/<p>(<[hul])/g, '$1')
+		.replace(/(<\/[hul][^>]*>)<\/p>/g, '$1');
+}
+---
+
+<!doctype html>
+<html lang="de">
+	<head>
+		<BaseHead title={`${titleData.title} | ${SITE_TITLE}`} description={titleData.description} />
+	</head>
+	<body>
+		<Header />
+		<main>
+			<article>
+				<header style="margin-bottom: 2em;">
+					<a href="/" style="font-size: 0.9em;">&larr; Zurück zur Übersicht</a>
+					<h1 style="margin-top: 0.5em;">{titleData.title}</h1>
+					<div class="meta" style="margin-top: 1em;">
+						<span class="category-badge">{getCategoryName(titleData.category)}</span>
+						{articleData && (
+							<span style="color: var(--text-light);">
+								{new Date(articleData.generated_at).toLocaleDateString('de-DE', {
+									year: 'numeric',
+									month: 'long',
+									day: 'numeric'
+								})}
+							</span>
+						)}
+					</div>
+				</header>
+
+				{articleData ? (
+					<div class="article-content" set:html={renderMarkdown(articleData.content)} />
+				) : (
+					<div class="article-content">
+						<p>Der Artikel konnte leider nicht generiert werden. Bitte versuchen Sie es später erneut.</p>
+					</div>
+				)}
+
+				<footer style="margin-top: 3em; padding-top: 2em; border-top: 1px solid var(--border-light);">
+					<p style="font-style: italic; color: var(--text-light);">
+						Waidmannsheil!<br />
+						<strong>{AUTHOR.name}</strong><br />
+						{AUTHOR.location}
+					</p>
+				</footer>
+			</article>
+		</main>
+		<Footer />
+	</body>
+</html>

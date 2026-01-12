@@ -1,0 +1,241 @@
+---
+import BaseHead from '../../components/BaseHead.astro';
+import Footer from '../../components/Footer.astro';
+import Header from '../../components/Header.astro';
+import { SITE_TITLE, CATEGORIES, AUTHOR } from '../../consts';
+import { supabase } from '../../lib/supabase';
+import { renderMarkdown } from '../../lib/markdown';
+
+const { id } = Astro.params;
+
+if (!id) {
+	return Astro.redirect('/');
+}
+
+// Get the title info
+const { data: titleData, error: titleError } = await supabase
+	.from('article_titles')
+	.select('*')
+	.eq('id', id)
+	.single();
+
+if (titleError || !titleData) {
+	return Astro.redirect('/');
+}
+
+// Check if article already exists
+const { data: articleData } = await supabase
+	.from('articles')
+	.select('*')
+	.eq('title_id', id)
+	.single();
+
+const needsGeneration = !articleData;
+
+function getCategoryName(categoryId: string): string {
+	const cat = CATEGORIES.find(c => c.id === categoryId);
+	return cat?.name || categoryId;
+}
+---
+
+<!doctype html>
+<html lang="de">
+	<head>
+		<BaseHead title={`${titleData.title} | ${SITE_TITLE}`} description={titleData.description} />
+	</head>
+	<body class="bg-[#f5f0e6] text-gray-800 text-lg leading-relaxed">
+		<Header />
+
+		<!-- Hero Image -->
+		{titleData.image_url && (
+			<div class="relative h-64 md:h-96 overflow-hidden">
+				<img
+					src={titleData.image_url}
+					alt={titleData.title}
+					class="w-full h-full object-cover"
+				/>
+				<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+				<div class="absolute bottom-0 left-0 right-0 p-6 md:p-8">
+					<div class="max-w-3xl mx-auto">
+						<span class="inline-block bg-[#2d3e28] text-[#f5f0e6] px-2.5 py-1 rounded text-sm mb-3">
+							{getCategoryName(titleData.category)}
+						</span>
+						<h1 class="text-2xl md:text-4xl font-bold text-white drop-shadow-lg">
+							{titleData.title}
+						</h1>
+					</div>
+				</div>
+			</div>
+		)}
+
+		<main class="max-w-3xl mx-auto px-4 py-8">
+			<article>
+				<header class="mb-8">
+					<a href="/" class="text-sm text-[#4a6741] hover:text-[#c9a54e] transition-colors">
+						&larr; Zurück zur Übersicht
+					</a>
+
+					{!titleData.image_url && (
+						<>
+							<h1 class="text-3xl md:text-4xl font-bold text-[#2d3e28] mt-3 mb-4">
+								{titleData.title}
+							</h1>
+							<div class="flex items-center gap-3 text-sm">
+								<span class="inline-block bg-[#2d3e28] text-[#f5f0e6] px-2.5 py-1 rounded">
+									{getCategoryName(titleData.category)}
+								</span>
+								{articleData && (
+									<span class="text-gray-500">
+										{new Date(articleData.generated_at).toLocaleDateString('de-DE', {
+											year: 'numeric',
+											month: 'long',
+											day: 'numeric'
+										})}
+									</span>
+								)}
+							</div>
+						</>
+					)}
+
+					{titleData.image_url && articleData && (
+						<div class="mt-4 text-sm text-gray-500">
+							{new Date(articleData.generated_at).toLocaleDateString('de-DE', {
+								year: 'numeric',
+								month: 'long',
+								day: 'numeric'
+							})}
+						</div>
+					)}
+				</header>
+
+				<div id="article-content" class="bg-white rounded-lg p-6 md:p-8 shadow-md">
+					{articleData ? (
+						<div set:html={renderMarkdown(articleData.content)} />
+					) : (
+						<div id="loading-state" class="flex items-center justify-center py-12">
+							<div class="text-center">
+								<div class="inline-block w-12 h-12 border-4 border-[#2d3e28] border-t-transparent rounded-full animate-spin mb-4"></div>
+								<p class="text-gray-600">Artikel wird generiert...</p>
+							</div>
+						</div>
+					)}
+					<div id="streaming-content" class="hidden"></div>
+				</div>
+
+				{needsGeneration && (
+					<script define:vars={{ articleId: id }}>
+						// Simple markdown renderer for streaming content
+						function renderMarkdown(text) {
+							if (!text) return '';
+
+							let html = text
+								.trim()
+								.replace(/\r\n/g, '\n')
+								.replace(/\n{3,}/g, '\n\n');
+
+							// Headers
+							html = html.replace(/^### (.+)$/gm, '<h3 class="text-xl font-bold text-[#2d3e28] mt-8 mb-3">$1</h3>');
+							html = html.replace(/^## (.+)$/gm, '<h2 class="text-2xl font-bold text-[#2d3e28] mt-8 mb-4 pt-4 border-t border-gray-200 first:border-t-0 first:pt-0 first:mt-0">$1</h2>');
+
+							// Bold and italic
+							html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+							html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+							html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+							// Process lists
+							const lines = html.split('\n');
+							const processed = [];
+							let inList = false;
+
+							for (let i = 0; i < lines.length; i++) {
+								const line = lines[i];
+								const isListItem = /^- (.+)$/.test(line);
+
+								if (isListItem) {
+									if (!inList) {
+										processed.push('<ul class="list-disc pl-6 mb-4 space-y-1">');
+										inList = true;
+									}
+									const content = line.replace(/^- (.+)$/, '$1');
+									processed.push('<li>' + content + '</li>');
+								} else {
+									if (inList) {
+										processed.push('</ul>');
+										inList = false;
+									}
+									processed.push(line);
+								}
+							}
+							if (inList) processed.push('</ul>');
+
+							html = processed.join('\n');
+
+							// Paragraphs
+							const blocks = html.split('\n\n');
+							const finalBlocks = blocks.map(block => {
+								block = block.trim();
+								if (!block) return '';
+								if (block.startsWith('<h') || block.startsWith('<ul') || block.startsWith('<ol')) {
+									return block;
+								}
+								if (!block.startsWith('<')) {
+									return '<p class="mb-4 leading-relaxed">' + block.replace(/\n/g, '<br>') + '</p>';
+								}
+								return block;
+							});
+
+							return finalBlocks.filter(Boolean).join('\n');
+						}
+
+						async function streamArticle() {
+							const loadingState = document.getElementById('loading-state');
+							const streamingContent = document.getElementById('streaming-content');
+
+							try {
+								const response = await fetch('/api/generate-article?id=' + articleId);
+
+								if (!response.ok) throw new Error('Failed to fetch article');
+
+								// Hide loading, show streaming content
+								if (loadingState) loadingState.classList.add('hidden');
+								streamingContent.classList.remove('hidden');
+
+								const reader = response.body.getReader();
+								const decoder = new TextDecoder();
+								let fullText = '';
+
+								while (true) {
+									const { done, value } = await reader.read();
+									if (done) break;
+
+									fullText += decoder.decode(value, { stream: true });
+									streamingContent.innerHTML = renderMarkdown(fullText);
+								}
+
+								// Final render (article is already saved on server)
+								streamingContent.innerHTML = renderMarkdown(fullText);
+
+							} catch (error) {
+								console.error('Stream error:', error);
+								streamingContent.innerHTML = '<p class="text-red-600">Fehler beim Laden des Artikels. Bitte laden Sie die Seite neu.</p>';
+								streamingContent.classList.remove('hidden');
+								if (loadingState) loadingState.classList.add('hidden');
+							}
+						}
+
+						streamArticle();
+					</script>
+				)}
+
+				<footer class="mt-12 pt-8 border-t border-gray-300">
+					<p class="italic text-gray-600">
+						Waidmannsheil!<br />
+						<strong class="text-[#2d3e28]">{AUTHOR.name}</strong><br />
+						{AUTHOR.location}
+					</p>
+				</footer>
+			</article>
+		</main>
+		<Footer />
+	</body>
+</html>

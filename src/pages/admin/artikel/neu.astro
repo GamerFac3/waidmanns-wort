@@ -1,0 +1,157 @@
+---
+import AdminLayout from '../../../components/AdminLayout.astro';
+import { getUser } from '../../../lib/supabase';
+import { CATEGORIES } from '../../../consts';
+
+const user = await getUser(Astro.cookies);
+if (!user) {
+	return Astro.redirect('/admin/login');
+}
+---
+
+<AdminLayout title="Neuer Artikel">
+	<div class="max-w-3xl">
+		<h1 class="text-3xl font-bold text-gray-800 mb-8">Neuer Artikel</h1>
+
+		<form id="article-form" class="bg-white rounded-lg shadow p-6 space-y-6">
+			<div>
+				<label for="title" class="block text-sm font-medium text-gray-700 mb-1">Titel *</label>
+				<input
+					type="text"
+					id="title"
+					name="title"
+					required
+					class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#4a6741]"
+					placeholder="Der Titel des Artikels"
+				/>
+			</div>
+
+			<div>
+				<label for="description" class="block text-sm font-medium text-gray-700 mb-1">Beschreibung *</label>
+				<textarea
+					id="description"
+					name="description"
+					required
+					rows="2"
+					class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#4a6741]"
+					placeholder="Kurze Beschreibung des Artikels"
+				></textarea>
+			</div>
+
+			<div>
+				<label for="category" class="block text-sm font-medium text-gray-700 mb-1">Kategorie *</label>
+				<select
+					id="category"
+					name="category"
+					required
+					class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#4a6741]"
+				>
+					<option value="">Kategorie wählen...</option>
+					{CATEGORIES.map(cat => (
+						<option value={cat.id}>{cat.name}</option>
+					))}
+				</select>
+			</div>
+
+			<div>
+				<label for="image" class="block text-sm font-medium text-gray-700 mb-1">Bild</label>
+				<input
+					type="file"
+					id="image"
+					name="image"
+					accept="image/*"
+					class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#4a6741]"
+				/>
+				<p class="text-sm text-gray-500 mt-1">Optional: Titelbild für den Artikel hochladen</p>
+			</div>
+
+			<div class="pt-4 border-t flex justify-between items-center">
+				<a href="/admin/artikel" class="text-gray-500 hover:text-gray-700">Abbrechen</a>
+				<div class="space-x-3">
+					<button
+						type="submit"
+						name="action"
+						value="save"
+						class="bg-[#2d3e28] text-white px-6 py-2 rounded hover:bg-[#4a6741] transition-colors"
+					>
+						Speichern
+					</button>
+					<button
+						type="submit"
+						name="action"
+						value="generate"
+						class="bg-[#c9a54e] text-gray-800 px-6 py-2 rounded hover:bg-[#b8943d] transition-colors"
+					>
+						Speichern & Generieren
+					</button>
+				</div>
+			</div>
+		</form>
+	</div>
+
+	<script>
+		import { createClient } from '@supabase/supabase-js';
+
+		const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+		const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+		const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+		const form = document.getElementById('article-form') as HTMLFormElement;
+
+		form.addEventListener('submit', async (e) => {
+			e.preventDefault();
+
+			const formData = new FormData(form);
+			const title = formData.get('title') as string;
+			const description = formData.get('description') as string;
+			const category = formData.get('category') as string;
+			const imageFile = formData.get('image') as File;
+			const action = (e.submitter as HTMLButtonElement).value;
+
+			const submitBtns = form.querySelectorAll('button[type="submit"]');
+			submitBtns.forEach(btn => (btn as HTMLButtonElement).disabled = true);
+
+			try {
+				// Upload image if provided
+				let imageUrl = null;
+				if (imageFile && imageFile.size > 0) {
+					const fileName = `${Date.now()}-${imageFile.name}`;
+					const { data: uploadData, error: uploadError } = await supabase.storage
+						.from('article-images')
+						.upload(fileName, imageFile);
+
+					if (uploadError) throw uploadError;
+
+					const { data: { publicUrl } } = supabase.storage
+						.from('article-images')
+						.getPublicUrl(fileName);
+
+					imageUrl = publicUrl;
+				}
+
+				// Create article via API
+				const response = await fetch('/api/admin/artikel', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ title, description, category, image_url: imageUrl }),
+				});
+
+				const data = await response.json();
+
+				if (!response.ok) {
+					throw new Error(data.error || 'Fehler beim Erstellen');
+				}
+
+				if (action === 'generate') {
+					// Redirect to article page to trigger generation
+					window.location.href = `/artikel/${data.id}`;
+				} else {
+					window.location.href = '/admin/artikel';
+				}
+			} catch (error) {
+				alert('Fehler: ' + (error as Error).message);
+				submitBtns.forEach(btn => (btn as HTMLButtonElement).disabled = false);
+			}
+		});
+	</script>
+</AdminLayout>

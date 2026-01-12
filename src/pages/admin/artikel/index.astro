@@ -1,0 +1,128 @@
+---
+import AdminLayout from '../../../components/AdminLayout.astro';
+import { getUser, supabase } from '../../../lib/supabase';
+import { CATEGORIES } from '../../../consts';
+
+const user = await getUser(Astro.cookies);
+if (!user) {
+	return Astro.redirect('/admin/login');
+}
+
+// Get all articles with their content status
+const { data: articles } = await supabase
+	.from('article_titles')
+	.select(`
+		*,
+		articles (id, generated_at)
+	`)
+	.order('created_at', { ascending: false });
+
+function getCategoryName(categoryId: string): string {
+	const cat = CATEGORIES.find(c => c.id === categoryId);
+	return cat?.name || categoryId;
+}
+---
+
+<AdminLayout title="Artikel">
+	<div class="flex justify-between items-center mb-8">
+		<h1 class="text-3xl font-bold text-gray-800">Artikel</h1>
+		<a
+			href="/admin/artikel/neu"
+			class="bg-[#2d3e28] text-white px-4 py-2 rounded hover:bg-[#4a6741] transition-colors"
+		>
+			+ Neuer Artikel
+		</a>
+	</div>
+
+	<div class="bg-white rounded-lg shadow overflow-hidden">
+		<table class="min-w-full divide-y divide-gray-200">
+			<thead class="bg-gray-50">
+				<tr>
+					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Titel</th>
+					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategorie</th>
+					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bild</th>
+					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Erstellt</th>
+					<th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aktionen</th>
+				</tr>
+			</thead>
+			<tbody class="bg-white divide-y divide-gray-200">
+				{articles && articles.map((article) => (
+					<tr class="hover:bg-gray-50">
+						<td class="px-6 py-4">
+							<a href={`/admin/artikel/${article.id}`} class="text-[#4a6741] hover:underline font-medium">
+								{article.title}
+							</a>
+							<p class="text-sm text-gray-500 truncate max-w-md">{article.description}</p>
+						</td>
+						<td class="px-6 py-4 whitespace-nowrap">
+							<span class="px-2 py-1 text-xs bg-gray-100 rounded">{getCategoryName(article.category)}</span>
+						</td>
+						<td class="px-6 py-4 whitespace-nowrap">
+							<span class:list={[
+								"px-2 py-1 text-xs rounded",
+								article.is_generated ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+							]}>
+								{article.is_generated ? 'Generiert' : 'Ausstehend'}
+							</span>
+						</td>
+						<td class="px-6 py-4 whitespace-nowrap">
+							{article.image_url ? (
+								<img src={article.image_url} alt="" class="w-12 h-8 object-cover rounded" />
+							) : (
+								<span class="text-gray-400 text-sm">Kein Bild</span>
+							)}
+						</td>
+						<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+							{new Date(article.created_at).toLocaleDateString('de-DE')}
+						</td>
+						<td class="px-6 py-4 whitespace-nowrap text-right text-sm">
+							<a href={`/artikel/${article.id}`} class="text-gray-500 hover:text-gray-700 mr-3" target="_blank">
+								Ansehen
+							</a>
+							<a href={`/admin/artikel/${article.id}`} class="text-[#4a6741] hover:underline mr-3">
+								Bearbeiten
+							</a>
+							<button
+								class="text-red-600 hover:text-red-800 delete-btn"
+								data-id={article.id}
+								data-title={article.title}
+							>
+								Löschen
+							</button>
+						</td>
+					</tr>
+				))}
+			</tbody>
+		</table>
+
+		{(!articles || articles.length === 0) && (
+			<div class="text-center py-12 text-gray-500">
+				Noch keine Artikel vorhanden.
+			</div>
+		)}
+	</div>
+
+	<script>
+		document.querySelectorAll('.delete-btn').forEach(btn => {
+			btn.addEventListener('click', async (e) => {
+				const target = e.target as HTMLButtonElement;
+				const id = target.dataset.id;
+				const title = target.dataset.title;
+
+				if (!confirm(`Artikel "${title}" wirklich löschen?`)) return;
+
+				try {
+					const response = await fetch(`/api/admin/artikel/${id}`, { method: 'DELETE' });
+					if (response.ok) {
+						window.location.reload();
+					} else {
+						alert('Fehler beim Löschen');
+					}
+				} catch {
+					alert('Fehler beim Löschen');
+				}
+			});
+		});
+	</script>
+</AdminLayout>

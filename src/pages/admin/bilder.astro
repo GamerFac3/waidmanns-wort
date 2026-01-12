@@ -1,0 +1,145 @@
+---
+import AdminLayout from '../../components/AdminLayout.astro';
+import { getUser, supabase } from '../../lib/supabase';
+
+const user = await getUser(Astro.cookies);
+if (!user) {
+	return Astro.redirect('/admin/login');
+}
+
+// List images from storage
+const { data: images, error } = await supabase.storage
+	.from('article-images')
+	.list('', {
+		limit: 100,
+		sortBy: { column: 'created_at', order: 'desc' },
+	});
+
+const bucketUrl = `${import.meta.env.SUPABASE_URL}/storage/v1/object/public/article-images`;
+---
+
+<AdminLayout title="Bilder">
+	<div class="flex justify-between items-center mb-8">
+		<h1 class="text-3xl font-bold text-gray-800">Bilder</h1>
+		<label class="bg-[#2d3e28] text-white px-4 py-2 rounded hover:bg-[#4a6741] transition-colors cursor-pointer">
+			<span id="upload-text">+ Bild hochladen</span>
+			<input type="file" id="upload-input" accept="image/*" class="hidden" multiple />
+		</label>
+	</div>
+
+	<div id="upload-progress" class="hidden mb-6 bg-blue-50 border border-blue-200 rounded p-4">
+		<p class="text-blue-700">Wird hochgeladen...</p>
+	</div>
+
+	{error ? (
+		<div class="bg-red-50 border border-red-200 rounded p-4">
+			<p class="text-red-700">Fehler beim Laden der Bilder: {error.message}</p>
+		</div>
+	) : images && images.length > 0 ? (
+		<div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+			{images.filter(img => img.name !== '.emptyFolderPlaceholder').map((image) => (
+				<div class="bg-white rounded-lg shadow overflow-hidden group relative">
+					<img
+						src={`${bucketUrl}/${image.name}`}
+						alt={image.name}
+						class="w-full h-32 object-cover"
+					/>
+					<div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
+						<button
+							class="copy-url-btn bg-white text-gray-800 px-2 py-1 rounded text-xs hover:bg-gray-100"
+							data-url={`${bucketUrl}/${image.name}`}
+						>
+							URL kopieren
+						</button>
+						<button
+							class="delete-btn bg-red-600 text-white px-2 py-1 rounded text-xs hover:bg-red-700"
+							data-name={image.name}
+						>
+							Löschen
+						</button>
+					</div>
+					<div class="p-2">
+						<p class="text-xs text-gray-500 truncate" title={image.name}>{image.name}</p>
+					</div>
+				</div>
+			))}
+		</div>
+	) : (
+		<div class="text-center py-16 bg-white rounded-lg shadow">
+			<div class="text-6xl mb-4">🖼️</div>
+			<p class="text-gray-500">Noch keine Bilder vorhanden.</p>
+		</div>
+	)}
+
+	<script>
+		import { createClient } from '@supabase/supabase-js';
+
+		const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+		const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+		const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+		const uploadInput = document.getElementById('upload-input') as HTMLInputElement;
+		const uploadText = document.getElementById('upload-text') as HTMLSpanElement;
+		const uploadProgress = document.getElementById('upload-progress') as HTMLDivElement;
+
+		// Upload handler
+		uploadInput.addEventListener('change', async (e) => {
+			const files = (e.target as HTMLInputElement).files;
+			if (!files || files.length === 0) return;
+
+			uploadProgress.classList.remove('hidden');
+			uploadText.textContent = 'Wird hochgeladen...';
+
+			try {
+				for (const file of Array.from(files)) {
+					const fileName = `${Date.now()}-${file.name}`;
+					const { error } = await supabase.storage
+						.from('article-images')
+						.upload(fileName, file);
+
+					if (error) throw error;
+				}
+
+				window.location.reload();
+			} catch (error) {
+				alert('Fehler beim Hochladen: ' + (error as Error).message);
+				uploadProgress.classList.add('hidden');
+				uploadText.textContent = '+ Bild hochladen';
+			}
+		});
+
+		// Copy URL buttons
+		document.querySelectorAll('.copy-url-btn').forEach(btn => {
+			btn.addEventListener('click', async () => {
+				const url = (btn as HTMLButtonElement).dataset.url;
+				if (url) {
+					await navigator.clipboard.writeText(url);
+					const originalText = btn.textContent;
+					btn.textContent = 'Kopiert!';
+					setTimeout(() => {
+						btn.textContent = originalText;
+					}, 1500);
+				}
+			});
+		});
+
+		// Delete buttons
+		document.querySelectorAll('.delete-btn').forEach(btn => {
+			btn.addEventListener('click', async () => {
+				const name = (btn as HTMLButtonElement).dataset.name;
+				if (!name || !confirm(`Bild "${name}" wirklich löschen?`)) return;
+
+				try {
+					const { error } = await supabase.storage
+						.from('article-images')
+						.remove([name]);
+
+					if (error) throw error;
+					window.location.reload();
+				} catch (error) {
+					alert('Fehler beim Löschen: ' + (error as Error).message);
+				}
+			});
+		});
+	</script>
+</AdminLayout>

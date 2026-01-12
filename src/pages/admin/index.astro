@@ -1,0 +1,122 @@
+---
+import AdminLayout from '../../components/AdminLayout.astro';
+import { getUser, supabase } from '../../lib/supabase';
+
+const user = await getUser(Astro.cookies);
+if (!user) {
+	return Astro.redirect('/admin/login');
+}
+
+// Get stats
+const { count: totalTitles } = await supabase
+	.from('article_titles')
+	.select('*', { count: 'exact', head: true });
+
+const { count: generatedCount } = await supabase
+	.from('article_titles')
+	.select('*', { count: 'exact', head: true })
+	.eq('is_generated', true);
+
+const { count: pendingCount } = await supabase
+	.from('article_titles')
+	.select('*', { count: 'exact', head: true })
+	.eq('is_generated', false);
+
+// Get recent articles
+const { data: recentArticles } = await supabase
+	.from('article_titles')
+	.select('*')
+	.order('created_at', { ascending: false })
+	.limit(5);
+---
+
+<AdminLayout title="Dashboard">
+	<h1 class="text-3xl font-bold text-gray-800 mb-8">Dashboard</h1>
+
+	<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+		<div class="bg-white rounded-lg shadow p-6">
+			<h3 class="text-gray-500 text-sm font-medium">Gesamt Artikel</h3>
+			<p class="text-3xl font-bold text-[#2d3e28]">{totalTitles || 0}</p>
+		</div>
+		<div class="bg-white rounded-lg shadow p-6">
+			<h3 class="text-gray-500 text-sm font-medium">Generiert</h3>
+			<p class="text-3xl font-bold text-green-600">{generatedCount || 0}</p>
+		</div>
+		<div class="bg-white rounded-lg shadow p-6">
+			<h3 class="text-gray-500 text-sm font-medium">Ausstehend</h3>
+			<p class="text-3xl font-bold text-orange-500">{pendingCount || 0}</p>
+		</div>
+	</div>
+
+	<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+		<div class="bg-white rounded-lg shadow p-6">
+			<h2 class="text-xl font-bold text-gray-800 mb-4">Schnellaktionen</h2>
+			<div class="space-y-3">
+				<a
+					href="/admin/artikel/neu"
+					class="block w-full bg-[#2d3e28] text-white text-center py-2 px-4 rounded hover:bg-[#4a6741] transition-colors"
+				>
+					Neuen Artikel erstellen
+				</a>
+				<button
+					id="generate-titles-btn"
+					class="w-full bg-[#c9a54e] text-gray-800 py-2 px-4 rounded hover:bg-[#b8943d] transition-colors"
+				>
+					Titel generieren lassen
+				</button>
+			</div>
+		</div>
+
+		<div class="bg-white rounded-lg shadow p-6">
+			<h2 class="text-xl font-bold text-gray-800 mb-4">Letzte Artikel</h2>
+			{recentArticles && recentArticles.length > 0 ? (
+				<ul class="space-y-2">
+					{recentArticles.map((article) => (
+						<li class="flex items-center justify-between py-2 border-b last:border-0">
+							<a href={`/admin/artikel/${article.id}`} class="text-[#4a6741] hover:underline truncate flex-1">
+								{article.title}
+							</a>
+							<span class:list={[
+								"ml-2 px-2 py-0.5 rounded text-xs",
+								article.is_generated ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+							]}>
+								{article.is_generated ? 'Generiert' : 'Ausstehend'}
+							</span>
+						</li>
+					))}
+				</ul>
+			) : (
+				<p class="text-gray-500">Noch keine Artikel vorhanden.</p>
+			)}
+			<a href="/admin/artikel" class="block text-center text-sm text-[#4a6741] hover:underline mt-4">
+				Alle Artikel anzeigen &rarr;
+			</a>
+		</div>
+	</div>
+
+	<script>
+		const generateBtn = document.getElementById('generate-titles-btn') as HTMLButtonElement;
+
+		generateBtn.addEventListener('click', async () => {
+			generateBtn.disabled = true;
+			generateBtn.textContent = 'Generiere...';
+
+			try {
+				const response = await fetch('/api/generate-titles', { method: 'POST' });
+				const data = await response.json();
+
+				if (data.success) {
+					alert(`${data.generated} neue Titel generiert!`);
+					window.location.reload();
+				} else {
+					alert('Fehler: ' + (data.error || 'Unbekannter Fehler'));
+				}
+			} catch (error) {
+				alert('Fehler beim Generieren der Titel');
+			}
+
+			generateBtn.disabled = false;
+			generateBtn.textContent = 'Titel generieren lassen';
+		});
+	</script>
+</AdminLayout>
