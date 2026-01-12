@@ -1,8 +1,8 @@
 import type { APIRoute } from 'astro';
 import { supabase, supabaseAdmin } from '../../lib/supabase';
-import { generateArticleContent, streamArticleContent, cleanMarkdown } from '../../lib/claude';
+import { generateArticleContent } from '../../lib/replicate';
 
-// GET: Stream article generation with guaranteed save
+// GET: Generate article (simulated streaming for UX)
 export const GET: APIRoute = async ({ url }) => {
 	const id = url.searchParams.get('id');
 
@@ -34,29 +34,19 @@ export const GET: APIRoute = async ({ url }) => {
 		});
 	}
 
-	// Generate FULLY first (ensures completion even if client disconnects)
-	const chunks: string[] = [];
-	let fullContent = '';
-
 	try {
-		const generator = streamArticleContent(
+		// Generate the full content
+		const content = await generateArticleContent(
 			titleData.title,
 			titleData.description,
 			titleData.category
 		);
 
-		for await (const chunk of generator) {
-			fullContent += chunk;
-			chunks.push(chunk);
-		}
-
-		// Clean and SAVE IMMEDIATELY before streaming to client
-		const cleanedContent = cleanMarkdown(fullContent);
-
+		// Save to database
 		if (supabaseAdmin) {
 			await supabaseAdmin.from('articles').insert({
 				title_id: id,
-				content: cleanedContent,
+				content: content,
 			});
 
 			await supabaseAdmin
@@ -65,14 +55,16 @@ export const GET: APIRoute = async ({ url }) => {
 				.eq('id', id);
 		}
 
-		// Now stream the saved content to client (simulated streaming for UX)
+		// Stream the content to client (simulated streaming for UX)
+		const words = content.split(' ');
 		const stream = new ReadableStream({
 			async start(controller) {
 				const encoder = new TextEncoder();
-				for (const chunk of chunks) {
-					controller.enqueue(encoder.encode(chunk));
+				for (let i = 0; i < words.length; i++) {
+					const word = words[i] + (i < words.length - 1 ? ' ' : '');
+					controller.enqueue(encoder.encode(word));
 					// Small delay for streaming effect
-					await new Promise(resolve => setTimeout(resolve, 10));
+					await new Promise(resolve => setTimeout(resolve, 20));
 				}
 				controller.close();
 			},

@@ -16,60 +16,124 @@ const { data: images, error } = await supabase.storage
 	});
 
 const bucketUrl = `${import.meta.env.SUPABASE_URL}/storage/v1/object/public/article-images`;
+
+// Filter out placeholder files
+const filteredImages = images?.filter(img => img.name !== '.emptyFolderPlaceholder') || [];
 ---
 
 <AdminLayout title="Bilder">
-	<div class="flex justify-between items-center mb-8">
-		<h1 class="text-3xl font-bold text-gray-800">Bilder</h1>
-		<label class="bg-[#2d3e28] text-white px-4 py-2 rounded hover:bg-[#4a6741] transition-colors cursor-pointer">
-			<span id="upload-text">+ Bild hochladen</span>
+	<!-- Mobile Title -->
+	<h1 class="text-2xl font-bold text-[#2d3e28] mb-6 lg:hidden">Bilder</h1>
+
+	<!-- Header -->
+	<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+		<div class="flex items-center gap-4">
+			<span class="text-gray-500">{filteredImages.length} Bilder</span>
+		</div>
+		<label class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#2d3e28] text-white rounded-xl hover:bg-[#4a6741] transition-colors font-medium cursor-pointer">
+			<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+			</svg>
+			<span id="upload-text">Bilder hochladen</span>
 			<input type="file" id="upload-input" accept="image/*" class="hidden" multiple />
 		</label>
 	</div>
 
-	<div id="upload-progress" class="hidden mb-6 bg-blue-50 border border-blue-200 rounded p-4">
-		<p class="text-blue-700">Wird hochgeladen...</p>
+	<!-- Upload Progress -->
+	<div id="upload-progress" class="hidden mb-6">
+		<div class="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+			<div class="flex items-center gap-3">
+				<svg class="w-6 h-6 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24">
+					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+					<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+				</svg>
+				<div>
+					<p class="text-blue-700 font-medium">Wird hochgeladen...</p>
+					<p id="upload-status" class="text-blue-600 text-sm">Bilder werden verarbeitet</p>
+				</div>
+			</div>
+		</div>
 	</div>
 
 	{error ? (
-		<div class="bg-red-50 border border-red-200 rounded p-4">
-			<p class="text-red-700">Fehler beim Laden der Bilder: {error.message}</p>
+		<div class="bg-red-50 border border-red-200 rounded-2xl p-6">
+			<div class="flex items-start gap-4">
+				<div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+					<svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+					</svg>
+				</div>
+				<div>
+					<h3 class="font-semibold text-red-800 mb-1">Fehler beim Laden</h3>
+					<p class="text-red-700 text-sm">{error.message}</p>
+				</div>
+			</div>
 		</div>
-	) : images && images.length > 0 ? (
-		<div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-			{images.filter(img => img.name !== '.emptyFolderPlaceholder').map((image) => (
-				<div class="bg-white rounded-lg shadow overflow-hidden group relative">
-					<img
-						src={`${bucketUrl}/${image.name}`}
-						alt={image.name}
-						class="w-full h-32 object-cover"
-					/>
-					<div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
-						<button
-							class="copy-url-btn bg-white text-gray-800 px-2 py-1 rounded text-xs hover:bg-gray-100"
-							data-url={`${bucketUrl}/${image.name}`}
-						>
-							URL kopieren
-						</button>
-						<button
-							class="delete-btn bg-red-600 text-white px-2 py-1 rounded text-xs hover:bg-red-700"
-							data-name={image.name}
-						>
-							Löschen
-						</button>
+	) : filteredImages.length > 0 ? (
+		<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+			{filteredImages.map((image) => (
+				<div class="group relative bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all">
+					<div class="aspect-square overflow-hidden">
+						<img
+							src={`${bucketUrl}/${image.name}`}
+							alt={image.name}
+							class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+							loading="lazy"
+						/>
 					</div>
-					<div class="p-2">
-						<p class="text-xs text-gray-500 truncate" title={image.name}>{image.name}</p>
+					<!-- Overlay -->
+					<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+						<p class="text-white text-xs truncate mb-2" title={image.name}>{image.name}</p>
+						<div class="flex gap-2">
+							<button
+								class="flex-1 py-1.5 bg-white text-gray-800 text-xs font-medium rounded-lg hover:bg-gray-100 transition-colors copy-url-btn"
+								data-url={`${bucketUrl}/${image.name}`}
+							>
+								URL kopieren
+							</button>
+							<button
+								class="py-1.5 px-3 bg-red-500 text-white text-xs font-medium rounded-lg hover:bg-red-600 transition-colors delete-btn"
+								data-name={image.name}
+							>
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+								</svg>
+							</button>
+						</div>
 					</div>
 				</div>
 			))}
 		</div>
 	) : (
-		<div class="text-center py-16 bg-white rounded-lg shadow">
-			<div class="text-6xl mb-4">🖼️</div>
-			<p class="text-gray-500">Noch keine Bilder vorhanden.</p>
+		<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-16 text-center">
+			<div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+				<svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+				</svg>
+			</div>
+			<h2 class="text-xl font-bold text-gray-800 mb-2">Keine Bilder vorhanden</h2>
+			<p class="text-gray-500 mb-6 max-w-md mx-auto">
+				Laden Sie Ihr erstes Bild hoch, um die Medienbibliothek zu nutzen.
+			</p>
+			<label class="inline-flex items-center gap-2 px-5 py-2.5 bg-[#2d3e28] text-white rounded-xl hover:bg-[#4a6741] transition-colors font-medium cursor-pointer">
+				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+				</svg>
+				Erstes Bild hochladen
+				<input type="file" accept="image/*" class="hidden upload-trigger" multiple />
+			</label>
 		</div>
 	)}
+
+	<!-- Lightbox -->
+	<div id="lightbox" class="hidden fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+		<button id="lightbox-close" class="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors">
+			<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+			</svg>
+		</button>
+		<img id="lightbox-img" src="" alt="" class="max-w-full max-h-full object-contain rounded-lg" />
+	</div>
 
 	<script>
 		import { createClient } from '@supabase/supabase-js';
@@ -81,36 +145,57 @@ const bucketUrl = `${import.meta.env.SUPABASE_URL}/storage/v1/object/public/arti
 		const uploadInput = document.getElementById('upload-input') as HTMLInputElement;
 		const uploadText = document.getElementById('upload-text') as HTMLSpanElement;
 		const uploadProgress = document.getElementById('upload-progress') as HTMLDivElement;
+		const uploadStatus = document.getElementById('upload-status') as HTMLParagraphElement;
+		const lightbox = document.getElementById('lightbox') as HTMLDivElement;
+		const lightboxImg = document.getElementById('lightbox-img') as HTMLImageElement;
+		const lightboxClose = document.getElementById('lightbox-close') as HTMLButtonElement;
+
+		// Also handle the upload trigger in empty state
+		document.querySelectorAll('.upload-trigger').forEach(input => {
+			input.addEventListener('change', handleUpload);
+		});
 
 		// Upload handler
-		uploadInput.addEventListener('change', async (e) => {
-			const files = (e.target as HTMLInputElement).files;
+		uploadInput.addEventListener('change', handleUpload);
+
+		async function handleUpload(e: Event) {
+			const input = e.target as HTMLInputElement;
+			const files = input.files;
 			if (!files || files.length === 0) return;
 
 			uploadProgress.classList.remove('hidden');
 			uploadText.textContent = 'Wird hochgeladen...';
 
+			const total = files.length;
+			let uploaded = 0;
+
 			try {
 				for (const file of Array.from(files)) {
+					uploadStatus.textContent = `${uploaded + 1} von ${total} Bildern...`;
 					const fileName = `${Date.now()}-${file.name}`;
 					const { error } = await supabase.storage
 						.from('article-images')
 						.upload(fileName, file);
 
 					if (error) throw error;
+					uploaded++;
 				}
 
-				window.location.reload();
+				uploadStatus.textContent = 'Erfolgreich hochgeladen!';
+				setTimeout(() => {
+					window.location.reload();
+				}, 500);
 			} catch (error) {
 				alert('Fehler beim Hochladen: ' + (error as Error).message);
 				uploadProgress.classList.add('hidden');
-				uploadText.textContent = '+ Bild hochladen';
+				uploadText.textContent = 'Bilder hochladen';
 			}
-		});
+		}
 
 		// Copy URL buttons
 		document.querySelectorAll('.copy-url-btn').forEach(btn => {
-			btn.addEventListener('click', async () => {
+			btn.addEventListener('click', async (e) => {
+				e.stopPropagation();
 				const url = (btn as HTMLButtonElement).dataset.url;
 				if (url) {
 					await navigator.clipboard.writeText(url);
@@ -125,7 +210,8 @@ const bucketUrl = `${import.meta.env.SUPABASE_URL}/storage/v1/object/public/arti
 
 		// Delete buttons
 		document.querySelectorAll('.delete-btn').forEach(btn => {
-			btn.addEventListener('click', async () => {
+			btn.addEventListener('click', async (e) => {
+				e.stopPropagation();
 				const name = (btn as HTMLButtonElement).dataset.name;
 				if (!name || !confirm(`Bild "${name}" wirklich löschen?`)) return;
 
@@ -140,6 +226,38 @@ const bucketUrl = `${import.meta.env.SUPABASE_URL}/storage/v1/object/public/arti
 					alert('Fehler beim Löschen: ' + (error as Error).message);
 				}
 			});
+		});
+
+		// Lightbox - click on image to open
+		document.querySelectorAll('.group').forEach(card => {
+			const img = card.querySelector('img');
+			if (img) {
+				img.addEventListener('click', () => {
+					lightboxImg.src = img.src;
+					lightbox.classList.remove('hidden');
+				});
+			}
+		});
+
+		// Close lightbox
+		lightboxClose.addEventListener('click', () => {
+			lightbox.classList.add('hidden');
+			lightboxImg.src = '';
+		});
+
+		lightbox.addEventListener('click', (e) => {
+			if (e.target === lightbox) {
+				lightbox.classList.add('hidden');
+				lightboxImg.src = '';
+			}
+		});
+
+		// Close lightbox with escape key
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape' && !lightbox.classList.contains('hidden')) {
+				lightbox.classList.add('hidden');
+				lightboxImg.src = '';
+			}
 		});
 	</script>
 </AdminLayout>

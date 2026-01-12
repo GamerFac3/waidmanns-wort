@@ -1,0 +1,106 @@
+---
+import BaseHead from '../../components/BaseHead.astro';
+import Footer from '../../components/Footer.astro';
+import Header from '../../components/Header.astro';
+import Badge from '../../components/ui/Badge.astro';
+import { SITE_TITLE, CATEGORIES } from '../../consts';
+import { supabase } from '../../lib/supabase';
+
+// Get article counts per category
+const { data: articleCounts } = await supabase
+	.from('article_titles')
+	.select('category')
+	.eq('is_generated', true);
+
+const countByCategory: Record<string, number> = {};
+articleCounts?.forEach(article => {
+	countByCategory[article.category] = (countByCategory[article.category] || 0) + 1;
+});
+
+// Category icons mapping
+const categoryIcons: Record<string, string> = {
+	wild: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z',
+	waffen: 'M13 10V3L4 14h7v7l9-11h-7z',
+	ausruestung: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
+	revier: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+	hunde: 'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z',
+	wald: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z',
+	fahrzeuge: 'M8 17a2 2 0 104 0m-4 0a2 2 0 114 0m-4 0H5.5A2.5 2.5 0 013 14.5v-7A2.5 2.5 0 015.5 5h9A2.5 2.5 0 0117 7.5v7a2.5 2.5 0 01-2.5 2.5H12m0 0a2 2 0 104 0m-4 0a2 2 0 114 0',
+	praxis: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
+	recht: 'M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3',
+	tradition: 'M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7',
+};
+---
+
+<!doctype html>
+<html lang="de">
+	<head>
+		<BaseHead title={`Kategorien | ${SITE_TITLE}`} description="Alle Kategorien des Jagdblogs" />
+	</head>
+	<body class="bg-[#faf8f3] text-gray-800">
+		<Header />
+
+		<!-- Hero -->
+		<section class="bg-gradient-to-br from-[#2d3e28] to-[#4a6741] py-16">
+			<div class="max-w-6xl mx-auto px-4">
+				<h1 class="text-4xl md:text-5xl font-bold text-white mb-4">Kategorien</h1>
+				<p class="text-xl text-white/80 max-w-2xl">
+					Entdecken Sie unsere Themengebiete rund um die Jagd, von Wildarten über Ausrüstung bis hin zu Tradition und Brauchtum.
+				</p>
+			</div>
+		</section>
+
+		<main class="max-w-6xl mx-auto px-4 py-12">
+			<div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+				{CATEGORIES.map((cat) => {
+					const articleCount = countByCategory[cat.id] || 0;
+					const iconPath = categoryIcons[cat.id] || categoryIcons['wald'];
+
+					return (
+						<a
+							href={`/kategorien/${cat.id}`}
+							class="group bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-2 border-transparent hover:border-[#c9a54e]"
+						>
+							<div class="flex items-start gap-4">
+								<div class="w-14 h-14 bg-[#2d3e28] rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-[#4a6741] transition-colors">
+									<svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d={iconPath} />
+									</svg>
+								</div>
+								<div class="flex-1">
+									<h2 class="text-xl font-bold text-[#2d3e28] mb-1 group-hover:text-[#4a6741] transition-colors">
+										{cat.name}
+									</h2>
+									<p class="text-gray-600 text-sm mb-3 line-clamp-2">
+										{cat.description}
+									</p>
+									<div class="flex items-center justify-between">
+										<Badge variant="outline" size="sm">
+											{articleCount} {articleCount === 1 ? 'Artikel' : 'Artikel'}
+										</Badge>
+										<svg class="w-5 h-5 text-[#c9a54e] transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+										</svg>
+									</div>
+								</div>
+							</div>
+						</a>
+					);
+				})}
+			</div>
+		</main>
+
+		<Footer />
+	</body>
+</html>
+
+<style>
+	@reference "tailwindcss";
+
+	.line-clamp-2 {
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+</style>

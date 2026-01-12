@@ -8,8 +8,12 @@ if (!user) {
 	return Astro.redirect('/admin/login');
 }
 
-// Get all articles with their content status
-const { data: articles } = await supabase
+// Get filter from query params
+const statusFilter = Astro.url.searchParams.get('status') || 'all';
+const categoryFilter = Astro.url.searchParams.get('category') || 'all';
+
+// Build query
+let query = supabase
 	.from('article_titles')
 	.select(`
 		*,
@@ -17,96 +21,295 @@ const { data: articles } = await supabase
 	`)
 	.order('created_at', { ascending: false });
 
+if (statusFilter === 'generated') {
+	query = query.eq('is_generated', true);
+} else if (statusFilter === 'pending') {
+	query = query.eq('is_generated', false);
+}
+
+if (categoryFilter !== 'all') {
+	query = query.eq('category', categoryFilter);
+}
+
+const { data: articles } = await query;
+
 function getCategoryName(categoryId: string): string {
 	const cat = CATEGORIES.find(c => c.id === categoryId);
 	return cat?.name || categoryId;
 }
+
+function formatDate(dateStr: string): string {
+	return new Date(dateStr).toLocaleDateString('de-DE', {
+		day: '2-digit',
+		month: '2-digit',
+		year: 'numeric'
+	});
+}
 ---
 
 <AdminLayout title="Artikel">
-	<div class="flex justify-between items-center mb-8">
-		<h1 class="text-3xl font-bold text-gray-800">Artikel</h1>
+	<!-- Mobile Title -->
+	<h1 class="text-2xl font-bold text-[#2d3e28] mb-6 lg:hidden">Artikel</h1>
+
+	<!-- Header -->
+	<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+		<div class="flex items-center gap-4">
+			<span class="text-gray-500">{articles?.length || 0} Artikel</span>
+		</div>
 		<a
 			href="/admin/artikel/neu"
-			class="bg-[#2d3e28] text-white px-4 py-2 rounded hover:bg-[#4a6741] transition-colors"
+			class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#2d3e28] text-white rounded-xl hover:bg-[#4a6741] transition-colors font-medium"
 		>
-			+ Neuer Artikel
+			<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+			</svg>
+			Neuer Artikel
 		</a>
 	</div>
 
-	<div class="bg-white rounded-lg shadow overflow-hidden">
-		<table class="min-w-full divide-y divide-gray-200">
-			<thead class="bg-gray-50">
-				<tr>
-					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Titel</th>
-					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategorie</th>
-					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bild</th>
-					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Erstellt</th>
-					<th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aktionen</th>
-				</tr>
-			</thead>
-			<tbody class="bg-white divide-y divide-gray-200">
-				{articles && articles.map((article) => (
-					<tr class="hover:bg-gray-50">
-						<td class="px-6 py-4">
-							<a href={`/admin/artikel/${article.id}`} class="text-[#4a6741] hover:underline font-medium">
-								{article.title}
-							</a>
-							<p class="text-sm text-gray-500 truncate max-w-md">{article.description}</p>
-						</td>
-						<td class="px-6 py-4 whitespace-nowrap">
-							<span class="px-2 py-1 text-xs bg-gray-100 rounded">{getCategoryName(article.category)}</span>
-						</td>
-						<td class="px-6 py-4 whitespace-nowrap">
-							<span class:list={[
-								"px-2 py-1 text-xs rounded",
-								article.is_generated ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
-							]}>
-								{article.is_generated ? 'Generiert' : 'Ausstehend'}
-							</span>
-						</td>
-						<td class="px-6 py-4 whitespace-nowrap">
-							{article.image_url ? (
-								<img src={article.image_url} alt="" class="w-12 h-8 object-cover rounded" />
-							) : (
-								<span class="text-gray-400 text-sm">Kein Bild</span>
-							)}
-						</td>
-						<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-							{new Date(article.created_at).toLocaleDateString('de-DE')}
-						</td>
-						<td class="px-6 py-4 whitespace-nowrap text-right text-sm">
-							<a href={`/artikel/${article.id}`} class="text-gray-500 hover:text-gray-700 mr-3" target="_blank">
-								Ansehen
-							</a>
-							<a href={`/admin/artikel/${article.id}`} class="text-[#4a6741] hover:underline mr-3">
-								Bearbeiten
-							</a>
-							<button
-								class="text-red-600 hover:text-red-800 delete-btn"
-								data-id={article.id}
-								data-title={article.title}
-							>
-								Löschen
-							</button>
-						</td>
-					</tr>
-				))}
-			</tbody>
-		</table>
+	<!-- Filters -->
+	<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6">
+		<form id="filter-form" class="flex flex-col sm:flex-row gap-4">
+			<div class="flex-1">
+				<label for="status-filter" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+				<select
+					id="status-filter"
+					name="status"
+					class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4a6741] focus:border-transparent"
+				>
+					<option value="all" selected={statusFilter === 'all'}>Alle Status</option>
+					<option value="generated" selected={statusFilter === 'generated'}>Generiert</option>
+					<option value="pending" selected={statusFilter === 'pending'}>Ausstehend</option>
+				</select>
+			</div>
+			<div class="flex-1">
+				<label for="category-filter" class="block text-sm font-medium text-gray-700 mb-1">Kategorie</label>
+				<select
+					id="category-filter"
+					name="category"
+					class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4a6741] focus:border-transparent"
+				>
+					<option value="all" selected={categoryFilter === 'all'}>Alle Kategorien</option>
+					{CATEGORIES.map((cat) => (
+						<option value={cat.id} selected={categoryFilter === cat.id}>{cat.name}</option>
+					))}
+				</select>
+			</div>
+			<div class="flex items-end">
+				<button
+					type="submit"
+					class="w-full sm:w-auto px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-medium"
+				>
+					Filtern
+				</button>
+			</div>
+		</form>
+	</div>
 
-		{(!articles || articles.length === 0) && (
-			<div class="text-center py-12 text-gray-500">
-				Noch keine Artikel vorhanden.
+	<!-- Articles Table/List -->
+	<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+		{articles && articles.length > 0 ? (
+			<>
+				{/* Desktop Table */}
+				<div class="hidden lg:block overflow-x-auto">
+					<table class="min-w-full">
+						<thead class="bg-gray-50 border-b border-gray-100">
+							<tr>
+								<th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Artikel</th>
+								<th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Kategorie</th>
+								<th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+								<th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Erstellt</th>
+								<th class="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Aktionen</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-gray-100">
+							{articles.map((article) => (
+								<tr class="hover:bg-gray-50 transition-colors">
+									<td class="px-6 py-4">
+										<div class="flex items-center gap-4">
+											{article.image_url ? (
+												<img
+													src={article.image_url}
+													alt=""
+													class="w-14 h-10 object-cover rounded-lg flex-shrink-0"
+												/>
+											) : (
+												<div class="w-14 h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+													<svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+														<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+													</svg>
+												</div>
+											)}
+											<div class="min-w-0">
+												<a href={`/admin/artikel/${article.id}`} class="font-medium text-[#2d3e28] hover:text-[#4a6741] transition-colors truncate block">
+													{article.title}
+												</a>
+												<p class="text-sm text-gray-500 truncate max-w-md">{article.description}</p>
+											</div>
+										</div>
+									</td>
+									<td class="px-6 py-4 whitespace-nowrap">
+										<span class="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-full">
+											{getCategoryName(article.category)}
+										</span>
+									</td>
+									<td class="px-6 py-4 whitespace-nowrap">
+										<span class:list={[
+											"px-3 py-1.5 text-xs font-medium rounded-full",
+											article.is_generated
+												? 'bg-green-100 text-green-700'
+												: 'bg-orange-100 text-orange-700'
+										]}>
+											{article.is_generated ? 'Generiert' : 'Ausstehend'}
+										</span>
+									</td>
+									<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+										{formatDate(article.created_at)}
+									</td>
+									<td class="px-6 py-4 whitespace-nowrap text-right">
+										<div class="flex items-center justify-end gap-2">
+											<a
+												href={`/artikel/${article.id}`}
+												target="_blank"
+												class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+												title="Ansehen"
+											>
+												<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+												</svg>
+											</a>
+											<a
+												href={`/admin/artikel/${article.id}`}
+												class="p-2 text-[#4a6741] hover:bg-[#4a6741]/10 rounded-lg transition-colors"
+												title="Bearbeiten"
+											>
+												<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+												</svg>
+											</a>
+											<button
+												class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors delete-btn"
+												data-id={article.id}
+												data-title={article.title}
+												title="Löschen"
+											>
+												<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+												</svg>
+											</button>
+										</div>
+									</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
+
+				{/* Mobile List */}
+				<div class="lg:hidden divide-y divide-gray-100">
+					{articles.map((article) => (
+						<div class="p-4">
+							<div class="flex items-start gap-3">
+								{article.image_url ? (
+									<img
+										src={article.image_url}
+										alt=""
+										class="w-16 h-12 object-cover rounded-lg flex-shrink-0"
+									/>
+								) : (
+									<div class="w-16 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+										<svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+										</svg>
+									</div>
+								)}
+								<div class="flex-1 min-w-0">
+									<a href={`/admin/artikel/${article.id}`} class="font-medium text-[#2d3e28] hover:text-[#4a6741] line-clamp-2">
+										{article.title}
+									</a>
+									<div class="flex items-center gap-2 mt-2 flex-wrap">
+										<span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full">
+											{getCategoryName(article.category)}
+										</span>
+										<span class:list={[
+											"px-2 py-1 text-xs font-medium rounded-full",
+											article.is_generated
+												? 'bg-green-100 text-green-700'
+												: 'bg-orange-100 text-orange-700'
+										]}>
+											{article.is_generated ? 'Generiert' : 'Ausstehend'}
+										</span>
+										<span class="text-xs text-gray-400">{formatDate(article.created_at)}</span>
+									</div>
+								</div>
+							</div>
+							<div class="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+								<a
+									href={`/artikel/${article.id}`}
+									target="_blank"
+									class="flex-1 text-center py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+								>
+									Ansehen
+								</a>
+								<a
+									href={`/admin/artikel/${article.id}`}
+									class="flex-1 text-center py-2 text-sm text-[#4a6741] hover:bg-[#4a6741]/10 rounded-lg transition-colors font-medium"
+								>
+									Bearbeiten
+								</a>
+								<button
+									class="flex-1 text-center py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg transition-colors delete-btn"
+									data-id={article.id}
+									data-title={article.title}
+								>
+									Löschen
+								</button>
+							</div>
+						</div>
+					))}
+				</div>
+			</>
+		) : (
+			<div class="p-12 text-center">
+				<div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+					<svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+					</svg>
+				</div>
+				<h2 class="text-xl font-bold text-gray-800 mb-2">Keine Artikel gefunden</h2>
+				<p class="text-gray-500 mb-6">
+					{statusFilter !== 'all' || categoryFilter !== 'all'
+						? 'Keine Artikel entsprechen den gewählten Filtern.'
+						: 'Erstellen Sie Ihren ersten Artikel.'}
+				</p>
+				<a
+					href="/admin/artikel/neu"
+					class="inline-flex items-center gap-2 px-5 py-2.5 bg-[#2d3e28] text-white rounded-xl hover:bg-[#4a6741] transition-colors font-medium"
+				>
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+					</svg>
+					Neuer Artikel
+				</a>
 			</div>
 		)}
 	</div>
 
 	<script>
+		// Filter form auto-submit
+		const filterForm = document.getElementById('filter-form') as HTMLFormElement;
+		const selects = filterForm.querySelectorAll('select');
+
+		selects.forEach(select => {
+			select.addEventListener('change', () => {
+				filterForm.submit();
+			});
+		});
+
+		// Delete buttons
 		document.querySelectorAll('.delete-btn').forEach(btn => {
 			btn.addEventListener('click', async (e) => {
-				const target = e.target as HTMLButtonElement;
+				const target = e.currentTarget as HTMLButtonElement;
 				const id = target.dataset.id;
 				const title = target.dataset.title;
 
@@ -126,3 +329,14 @@ function getCategoryName(categoryId: string): string {
 		});
 	</script>
 </AdminLayout>
+
+<style>
+	@reference "tailwindcss";
+
+	.line-clamp-2 {
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+</style>

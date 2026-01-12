@@ -8,6 +8,19 @@ interface Props {
 
 const { title } = Astro.props;
 const currentPath = Astro.url.pathname;
+
+const navItems = [
+	{ href: '/admin', label: 'Dashboard', icon: 'dashboard' },
+	{ href: '/admin/artikel', label: 'Artikel', icon: 'articles' },
+	{ href: '/admin/bilder', label: 'Bilder', icon: 'images' },
+];
+
+function isActive(href: string): boolean {
+	if (href === '/admin') {
+		return currentPath === '/admin' || currentPath === '/admin/';
+	}
+	return currentPath.startsWith(href);
+}
 ---
 
 <!doctype html>
@@ -15,56 +28,138 @@ const currentPath = Astro.url.pathname;
 	<head>
 		<BaseHead title={`${title} | Admin | ${SITE_TITLE}`} description="Admin Bereich" />
 	</head>
-	<body class="bg-gray-100 min-h-screen">
-		<nav class="bg-[#2d3e28] text-white shadow-lg">
-			<div class="max-w-7xl mx-auto px-4">
-				<div class="flex justify-between items-center h-16">
-					<div class="flex items-center space-x-8">
-						<a href="/admin" class="font-bold text-lg">Admin</a>
-						<div class="flex space-x-4">
-							<a
-								href="/admin"
-								class:list={[
-									"px-3 py-2 rounded-md text-sm",
-									currentPath === '/admin' ? 'bg-[#4a6741]' : 'hover:bg-[#4a6741]'
-								]}
-							>
-								Dashboard
-							</a>
-							<a
-								href="/admin/artikel"
-								class:list={[
-									"px-3 py-2 rounded-md text-sm",
-									currentPath.startsWith('/admin/artikel') ? 'bg-[#4a6741]' : 'hover:bg-[#4a6741]'
-								]}
-							>
-								Artikel
-							</a>
-							<a
-								href="/admin/bilder"
-								class:list={[
-									"px-3 py-2 rounded-md text-sm",
-									currentPath.startsWith('/admin/bilder') ? 'bg-[#4a6741]' : 'hover:bg-[#4a6741]'
-								]}
-							>
-								Bilder
-							</a>
-						</div>
+	<body class="bg-[#faf8f3] min-h-screen">
+		<!-- Mobile Header -->
+		<header class="lg:hidden bg-[#2d3e28] text-white sticky top-0 z-50">
+			<div class="flex items-center justify-between px-4 h-16">
+				<div class="flex items-center gap-3">
+					<button id="mobile-menu-btn" class="p-2 hover:bg-[#4a6741] rounded-lg transition-colors">
+						<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+						</svg>
+					</button>
+					<span class="font-bold text-lg">Admin</span>
+				</div>
+				<a href="/" class="text-sm text-white/80 hover:text-white transition-colors" target="_blank">
+					Website
+				</a>
+			</div>
+		</header>
+
+		<!-- Mobile Sidebar Overlay -->
+		<div id="mobile-overlay" class="hidden lg:hidden fixed inset-0 bg-black/50 z-40"></div>
+
+		<!-- Sidebar -->
+		<aside id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-[#2d3e28] text-white z-50 transform -translate-x-full lg:translate-x-0 transition-transform duration-300">
+			<div class="flex flex-col h-full">
+				<!-- Logo -->
+				<div class="flex items-center gap-3 px-6 h-20 border-b border-white/10">
+					<div class="w-10 h-10 bg-[#c9a54e] rounded-xl flex items-center justify-center">
+						<svg class="w-6 h-6 text-[#2d3e28]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+						</svg>
 					</div>
-					<div class="flex items-center space-x-4">
-						<a href="/" class="text-sm hover:underline" target="_blank">Website ansehen</a>
-						<form action="/api/auth/signout" method="POST">
-							<button type="submit" class="bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded text-sm">
-								Abmelden
-							</button>
-						</form>
+					<div>
+						<p class="font-bold text-lg">Admin</p>
+						<p class="text-xs text-white/60">Waidmanns Wort</p>
 					</div>
 				</div>
-			</div>
-		</nav>
 
-		<main class="max-w-7xl mx-auto px-4 py-8">
-			<slot />
-		</main>
+				<!-- Navigation -->
+				<nav class="flex-1 py-6 px-4 space-y-2">
+					{navItems.map((item) => (
+						<a
+							href={item.href}
+							class:list={[
+								"flex items-center gap-3 px-4 py-3 rounded-xl transition-all",
+								isActive(item.href)
+									? 'bg-[#c9a54e] text-[#2d3e28] font-semibold shadow-lg'
+									: 'text-white/80 hover:bg-white/10 hover:text-white'
+							]}
+						>
+							{item.icon === 'dashboard' && (
+								<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+								</svg>
+							)}
+							{item.icon === 'articles' && (
+								<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+								</svg>
+							)}
+							{item.icon === 'images' && (
+								<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+								</svg>
+							)}
+							<span>{item.label}</span>
+						</a>
+					))}
+				</nav>
+
+				<!-- Footer -->
+				<div class="p-4 border-t border-white/10 space-y-3">
+					<a
+						href="/"
+						target="_blank"
+						class="flex items-center gap-3 px-4 py-2.5 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+					>
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+						</svg>
+						<span class="text-sm">Website ansehen</span>
+					</a>
+					<form action="/api/auth/signout" method="POST">
+						<button
+							type="submit"
+							class="w-full flex items-center gap-3 px-4 py-2.5 text-red-300 hover:text-red-200 hover:bg-red-500/20 rounded-xl transition-all"
+						>
+							<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+							</svg>
+							<span class="text-sm">Abmelden</span>
+						</button>
+					</form>
+				</div>
+			</div>
+		</aside>
+
+		<!-- Main Content -->
+		<div class="lg:ml-64">
+			<!-- Desktop Header -->
+			<header class="hidden lg:flex items-center justify-between px-8 h-20 bg-white border-b border-gray-200">
+				<h1 class="text-2xl font-bold text-[#2d3e28]">{title}</h1>
+				<div class="flex items-center gap-4">
+					<a
+						href="/"
+						target="_blank"
+						class="flex items-center gap-2 text-gray-500 hover:text-[#4a6741] transition-colors"
+					>
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+						</svg>
+						<span class="text-sm">Website</span>
+					</a>
+				</div>
+			</header>
+
+			<main class="p-6 lg:p-8">
+				<slot />
+			</main>
+		</div>
+
+		<script>
+			const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+			const sidebar = document.getElementById('sidebar');
+			const overlay = document.getElementById('mobile-overlay');
+
+			function toggleSidebar() {
+				sidebar?.classList.toggle('-translate-x-full');
+				overlay?.classList.toggle('hidden');
+			}
+
+			mobileMenuBtn?.addEventListener('click', toggleSidebar);
+			overlay?.addEventListener('click', toggleSidebar);
+		</script>
 	</body>
 </html>

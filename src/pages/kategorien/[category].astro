@@ -1,0 +1,139 @@
+---
+import BaseHead from '../../components/BaseHead.astro';
+import Footer from '../../components/Footer.astro';
+import Header from '../../components/Header.astro';
+import ArticleCard from '../../components/ui/ArticleCard.astro';
+import CategoryNav from '../../components/ui/CategoryNav.astro';
+import Pagination from '../../components/ui/Pagination.astro';
+import { SITE_TITLE, CATEGORIES } from '../../consts';
+import { supabase } from '../../lib/supabase';
+
+const { category } = Astro.params;
+
+// Find category info
+const categoryInfo = CATEGORIES.find(c => c.id === category);
+
+if (!categoryInfo) {
+	return Astro.redirect('/kategorien');
+}
+
+// Pagination
+const ARTICLES_PER_PAGE = 12;
+const currentPage = Number(Astro.url.searchParams.get('page')) || 1;
+const offset = (currentPage - 1) * ARTICLES_PER_PAGE;
+
+// Get total count for this category
+const { count: totalCount } = await supabase
+	.from('article_titles')
+	.select('*', { count: 'exact', head: true })
+	.eq('is_generated', true)
+	.eq('category', category);
+
+const totalPages = Math.ceil((totalCount || 0) / ARTICLES_PER_PAGE);
+
+// Fetch articles for this category
+const { data: articles } = await supabase
+	.from('article_titles')
+	.select(`
+		*,
+		articles (generated_at)
+	`)
+	.eq('is_generated', true)
+	.eq('category', category)
+	.order('created_at', { ascending: false })
+	.range(offset, offset + ARTICLES_PER_PAGE - 1);
+---
+
+<!doctype html>
+<html lang="de">
+	<head>
+		<BaseHead
+			title={`${categoryInfo.name} | ${SITE_TITLE}`}
+			description={categoryInfo.description}
+		/>
+	</head>
+	<body class="bg-[#faf8f3] text-gray-800">
+		<Header />
+
+		<!-- Hero -->
+		<section class="bg-gradient-to-br from-[#2d3e28] to-[#4a6741] py-16">
+			<div class="max-w-6xl mx-auto px-4">
+				<!-- Breadcrumb -->
+				<nav class="flex items-center gap-2 text-sm text-white/60 mb-4">
+					<a href="/" class="hover:text-white transition-colors">Startseite</a>
+					<span>/</span>
+					<a href="/kategorien" class="hover:text-white transition-colors">Kategorien</a>
+					<span>/</span>
+					<span class="text-white">{categoryInfo.name}</span>
+				</nav>
+
+				<h1 class="text-4xl md:text-5xl font-bold text-white mb-4">{categoryInfo.name}</h1>
+				<p class="text-xl text-white/80 max-w-2xl mb-4">
+					{categoryInfo.description}
+				</p>
+				<p class="text-white/60">
+					{totalCount || 0} {totalCount === 1 ? 'Artikel' : 'Artikel'} in dieser Kategorie
+				</p>
+			</div>
+		</section>
+
+		<main class="max-w-6xl mx-auto px-4 py-12">
+			<!-- Category Navigation -->
+			<div class="mb-12">
+				<CategoryNav activeCategory={category} showAll={true} />
+			</div>
+
+			<!-- Articles Grid -->
+			{articles && articles.length > 0 ? (
+				<>
+					<div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+						{articles.map((article) => (
+							<ArticleCard
+								id={article.id}
+								title={article.title}
+								description={article.description}
+								category={article.category}
+								imageUrl={article.image_url}
+								date={article.articles?.[0]?.generated_at || article.created_at}
+							/>
+						))}
+					</div>
+
+					<!-- Pagination -->
+					<div class="mt-12">
+						<Pagination
+							currentPage={currentPage}
+							totalPages={totalPages}
+							baseUrl={`/kategorien/${category}`}
+						/>
+					</div>
+				</>
+			) : (
+				<div class="text-center py-20">
+					<div class="w-24 h-24 bg-[#2d3e28]/10 rounded-full flex items-center justify-center mx-auto mb-6">
+						<svg class="w-12 h-12 text-[#2d3e28]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+						</svg>
+					</div>
+					<h2 class="text-2xl font-bold text-[#2d3e28] mb-3">
+						Keine Artikel in dieser Kategorie
+					</h2>
+					<p class="text-gray-600 max-w-md mx-auto mb-6">
+						In der Kategorie "{categoryInfo.name}" sind noch keine Artikel vorhanden.
+					</p>
+					<a
+						href="/kategorien"
+						class="inline-flex items-center gap-2 text-[#4a6741] font-medium hover:text-[#2d3e28] transition-colors"
+					>
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+						</svg>
+						Alle Kategorien anzeigen
+					</a>
+				</div>
+			)}
+		</main>
+
+		<Footer />
+	</body>
+</html>

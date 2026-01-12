@@ -1,0 +1,60 @@
+---
+interface Props {
+	type?: string;
+	name: string;
+	id?: string;
+	placeholder?: string;
+	value?: string;
+	required?: boolean;
+	class?: string;
+	label?: string;
+	rows?: number;
+}
+
+const {
+	type = 'text',
+	name,
+	id,
+	placeholder,
+	value = '',
+	required = false,
+	class: className = '',
+	label,
+	rows
+} = Astro.props;
+
+const inputId = id || name;
+const isTextarea = type === 'textarea';
+
+const inputClasses = 'w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 transition-all duration-200 focus:outline-none focus:border-[#4a6741] focus:ring-4 focus:ring-[#4a6741]/10';
+---
+
+<div class="space-y-2">
+	{label && (
+		<label for={inputId} class="block text-sm font-medium text-gray-700">
+			{label}
+			{required && <span class="text-red-500 ml-1">*</span>}
+		</label>
+	)}
+
+	{isTextarea ? (
+		<textarea
+			id={inputId}
+			name={name}
+			placeholder={placeholder}
+			required={required}
+			rows={rows || 4}
+			class:list={[inputClasses, className]}
+		>{value}</textarea>
+	) : (
+		<input
+			type={type}
+			id={inputId}
+			name={name}
+			placeholder={placeholder}
+			value={value}
+			required={required}
+			class:list={[inputClasses, className]}
+		/>
+	)}
+</div>

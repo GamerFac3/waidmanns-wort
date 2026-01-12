@@ -1,0 +1,59 @@
+---
+interface Props {
+	variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+	size?: 'sm' | 'md' | 'lg';
+	href?: string;
+	type?: 'button' | 'submit';
+	disabled?: boolean;
+	class?: string;
+}
+
+const {
+	variant = 'primary',
+	size = 'md',
+	href,
+	type = 'button',
+	disabled = false,
+	class: className = ''
+} = Astro.props;
+
+const baseClasses = 'inline-flex items-center justify-center font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2';
+
+const sizeClasses = {
+	sm: 'px-3 py-1.5 text-sm',
+	md: 'px-5 py-2.5 text-base',
+	lg: 'px-6 py-3 text-lg',
+};
+
+const variantClasses = {
+	primary: 'bg-[#2d3e28] text-white hover:bg-[#4a6741] focus:ring-[#4a6741] shadow-md hover:shadow-lg',
+	secondary: 'bg-[#c9a54e] text-[#2d3e28] hover:bg-[#b8943d] focus:ring-[#c9a54e] shadow-md hover:shadow-lg',
+	ghost: 'text-[#2d3e28] hover:bg-[#2d3e28]/10 focus:ring-[#2d3e28]',
+	danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 shadow-md hover:shadow-lg',
+};
+
+const disabledClasses = 'opacity-50 cursor-not-allowed pointer-events-none';
+
+const Tag = href ? 'a' : 'button';
+---
+
+<Tag
+	href={href}
+	type={!href ? type : undefined}
+	disabled={!href ? disabled : undefined}
+	class:list={[
+		baseClasses,
+		sizeClasses[size],
+		variantClasses[variant],
+		disabled && disabledClasses,
+		className
+	]}
+>
+	<slot />
+</Tag>
+
+<style>
+	a {
+		text-decoration: none;
+	}
+</style>

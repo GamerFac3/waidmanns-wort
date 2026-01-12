@@ -9,13 +9,13 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.71.2",
     "@astrojs/mdx": "^4.3.13",
     "@astrojs/rss": "^4.0.14",
     "@astrojs/sitemap": "^3.6.1",
     "@astrojs/vercel": "^9.0.3",
     "@supabase/supabase-js": "^2.90.1",
     "astro": "^5.16.9",
+    "replicate": "^1.4.0",
     "sharp": "^0.34.3"
   },
   "devDependencies": {

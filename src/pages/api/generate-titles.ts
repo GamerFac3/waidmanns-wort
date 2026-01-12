@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { supabase, supabaseAdmin } from '../../lib/supabase';
-import { generateNewTitles } from '../../lib/claude';
+import { generateNewTitles } from '../../lib/replicate';
 
 export const POST: APIRoute = async () => {
 	try {
@@ -17,18 +17,8 @@ export const POST: APIRoute = async () => {
 			.select('*', { count: 'exact', head: true })
 			.eq('is_generated', false);
 
-		const needed = Math.max(0, 5 - (count || 0));
-
-		if (needed === 0) {
-			return new Response(JSON.stringify({
-				success: true,
-				message: 'Enough titles available',
-				generated: 0
-			}), {
-				status: 200,
-				headers: { 'Content-Type': 'application/json' },
-			});
-		}
+		// Always generate at least 1 title, up to 5 if pool is low
+		const needed = Math.max(1, 5 - (count || 0));
 
 		// Generate new titles
 		const newTitles = await generateNewTitles(needed);

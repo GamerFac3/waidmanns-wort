@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getUser, supabase, supabaseAdmin } from '../../../../../lib/supabase';
-import { generateArticleContent } from '../../../../../lib/claude';
+import { generateArticleContent } from '../../../../../lib/replicate';
 
 export const POST: APIRoute = async ({ params, cookies }) => {
 	const user = await getUser(cookies);

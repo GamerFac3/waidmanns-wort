@@ -1,14 +1,95 @@
 ---
-import { AUTHOR, SITE_TITLE } from '../consts';
+import { AUTHOR, SITE_TITLE, CATEGORIES } from '../consts';
 const today = new Date();
 ---
 
-<footer class="py-8 px-4 bg-[#2d3e28] text-[#f5f0e6] text-center">
-	<p class="mb-2">
-		<strong>{SITE_TITLE}</strong><br />
-		Ein Blog von {AUTHOR.name} aus dem {AUTHOR.location}
-	</p>
-	<p class="text-sm opacity-80">
-		&copy; {today.getFullYear()} {AUTHOR.name}. Waidmannsheil!
-	</p>
+<footer class="bg-[#2d3e28] text-[#faf8f3]">
+	<!-- Main Footer -->
+	<div class="max-w-6xl mx-auto px-4 py-12">
+		<div class="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+			<!-- About -->
+			<div class="lg:col-span-2">
+				<div class="flex items-center gap-3 mb-4">
+					<div class="w-10 h-10 bg-[#c9a54e] rounded-full flex items-center justify-center">
+						<svg class="w-6 h-6 text-[#2d3e28]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+						</svg>
+					</div>
+					<span class="text-xl font-bold">{SITE_TITLE}</span>
+				</div>
+				<p class="text-[#faf8f3]/70 leading-relaxed mb-4 max-w-md">
+					{AUTHOR.bio}
+				</p>
+				<p class="text-sm text-[#c9a54e]">
+					{AUTHOR.experience}
+				</p>
+			</div>
+
+			<!-- Categories -->
+			<div>
+				<h3 class="font-bold text-lg mb-4">Kategorien</h3>
+				<ul class="space-y-2">
+					{CATEGORIES.slice(0, 6).map((cat) => (
+						<li>
+							<a
+								href={`/kategorien/${cat.id}`}
+								class="text-[#faf8f3]/70 hover:text-[#c9a54e] transition-colors text-sm"
+							>
+								{cat.name}
+							</a>
+						</li>
+					))}
+					<li>
+						<a
+							href="/kategorien"
+							class="text-[#c9a54e] hover:text-[#c9a54e]/80 transition-colors text-sm font-medium"
+						>
+							Alle anzeigen &rarr;
+						</a>
+					</li>
+				</ul>
+			</div>
+
+			<!-- Quick Links -->
+			<div>
+				<h3 class="font-bold text-lg mb-4">Links</h3>
+				<ul class="space-y-2">
+					<li>
+						<a href="/" class="text-[#faf8f3]/70 hover:text-[#c9a54e] transition-colors text-sm">
+							Startseite
+						</a>
+					</li>
+					<li>
+						<a href="/about" class="text-[#faf8f3]/70 hover:text-[#c9a54e] transition-colors text-sm">
+							Über mich
+						</a>
+					</li>
+					<li>
+						<a href="/kategorien" class="text-[#faf8f3]/70 hover:text-[#c9a54e] transition-colors text-sm">
+							Kategorien
+						</a>
+					</li>
+					<li>
+						<a href="/suche" class="text-[#faf8f3]/70 hover:text-[#c9a54e] transition-colors text-sm">
+							Suche
+						</a>
+					</li>
+				</ul>
+			</div>
+		</div>
+	</div>
+
+	<!-- Bottom Bar -->
+	<div class="border-t border-white/10">
+		<div class="max-w-6xl mx-auto px-4 py-6">
+			<div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+				<p class="text-sm text-[#faf8f3]/60">
+					&copy; {today.getFullYear()} {AUTHOR.name}. Alle Rechte vorbehalten.
+				</p>
+				<p class="text-sm text-[#c9a54e] font-medium">
+					Waidmannsheil!
+				</p>
+			</div>
+		</div>
+	</div>
 </footer>

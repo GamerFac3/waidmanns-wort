@@ -1,12 +1,15 @@
-import Anthropic from '@anthropic-ai/sdk';
+import Replicate from 'replicate';
 import { AUTHOR, CATEGORIES } from '../consts';
 
-const anthropic = new Anthropic({
-	apiKey: import.meta.env.ANTHROPIC_API_KEY,
+const replicate = new Replicate({
+	auth: import.meta.env.REPLICATE_API_TOKEN,
 });
 
-// Use Haiku for faster generation
-const MODEL = 'claude-haiku-4-5';
+// Cheap text model - Meta Llama 3 8B Instruct
+const TEXT_MODEL = 'meta/meta-llama-3-8b-instruct' as const;
+
+// Cheap image model - Flux Schnell (already fast and affordable)
+const IMAGE_MODEL = 'black-forest-labs/flux-schnell' as const;
 
 const SYSTEM_PROMPT = `Du bist ${AUTHOR.name} (genannt "${AUTHOR.nickname}"), Jahrgang ${AUTHOR.birthYear}, ein erfahrener Jäger aus ${AUTHOR.village} im ${AUTHOR.location}. ${AUTHOR.bio}
 
@@ -67,6 +70,24 @@ WICHTIG:
 - Keine Werbung
 - Bleibe konsistent mit den obigen Fakten!`;
 
+async function generateText(prompt: string, systemPrompt: string = SYSTEM_PROMPT, maxTokens: number = 2048): Promise<string> {
+	const output = await replicate.run(TEXT_MODEL, {
+		input: {
+			prompt: prompt,
+			system_prompt: systemPrompt,
+			max_tokens: maxTokens,
+			temperature: 0.7,
+			top_p: 0.9,
+		},
+	});
+
+	// Output is an array of strings, join them
+	if (Array.isArray(output)) {
+		return output.join('').trim();
+	}
+	return String(output).trim();
+}
+
 /**
  * Cleans and normalizes markdown content to prevent rendering issues
  */
@@ -121,52 +142,40 @@ export async function generateArticleContent(
 	description: string,
 	category: string
 ): Promise<string> {
-	const message = await anthropic.messages.create({
-		model: MODEL,
-		max_tokens: 1500,
-		messages: [
-			{
-				role: 'user',
-				content: buildArticlePrompt(title, description, category),
-			},
-		],
-		system: SYSTEM_PROMPT,
-	});
-
-	const content = message.content[0];
-	if (content.type === 'text') {
-		return cleanMarkdown(content.text);
-	}
-	throw new Error('Unexpected response type from Claude');
+	const content = await generateText(
+		buildArticlePrompt(title, description, category),
+		SYSTEM_PROMPT,
+		2048
+	);
+	return cleanMarkdown(content);
 }
 
-export async function* streamArticleContent(
+export async function generateImagePrompt(
 	title: string,
 	description: string,
 	category: string
-): AsyncGenerator<string, string, unknown> {
-	const stream = anthropic.messages.stream({
-		model: MODEL,
-		max_tokens: 1500,
-		messages: [
-			{
-				role: 'user',
-				content: buildArticlePrompt(title, description, category),
-			},
-		],
-		system: SYSTEM_PROMPT,
-	});
+): Promise<string> {
+	const prompt = `Erstelle eine detaillierte Bildbeschreibung für einen Jagdblog-Artikel.
 
-	let fullContent = '';
+TITEL: ${title}
+BESCHREIBUNG: ${description}
+KATEGORIE: ${category}
 
-	for await (const event of stream) {
-		if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-			fullContent += event.delta.text;
-			yield event.delta.text;
-		}
-	}
+Generiere eine englische Bildbeschreibung für ein KI-Bildgenerator.
 
-	return cleanMarkdown(fullContent);
+Anforderungen:
+- Beschreibe eine stimmungsvolle Jagdszene passend zum Thema
+- Natürliche Landschaft (bayerische/deutsche Alpen, Wald, Wiesen)
+- Authentische Jagdatmosphäre
+- Keine Menschen im Bild
+- Natürliches Licht (Morgenlicht, Abendlicht, goldene Stunde)
+- Fotografischer Stil, hochwertig
+
+Antworte NUR mit der englischen Bildbeschreibung, keine Erklärungen.`;
+
+	const systemPrompt = 'Du bist ein Experte für Bildbeschreibungen. Generiere präzise, detaillierte Prompts für KI-Bildgeneratoren.';
+
+	return generateText(prompt, systemPrompt, 300);
 }
 
 export async function generateNewTitles(count: number = 5): Promise<Array<{
@@ -176,13 +185,7 @@ export async function generateNewTitles(count: number = 5): Promise<Array<{
 }>> {
 	const categoryList = CATEGORIES.map(c => `${c.id}: ${c.name}`).join(', ');
 
-	const message = await anthropic.messages.create({
-		model: MODEL,
-		max_tokens: 1000,
-		messages: [
-			{
-				role: 'user',
-				content: `Generiere ${count} Blogartikel-Ideen für einen deutschen Jagdblog.
+	const prompt = `Generiere ${count} Blogartikel-Ideen für einen deutschen Jagdblog.
 
 Kategorien: ${categoryList}
 
@@ -193,24 +196,37 @@ Regeln:
 - Titel: Interessant, konkret, 5-10 Wörter
 - Description: Ein Satz, was der Leser lernt
 - Category: Exakt eine der obigen IDs
-- Themen: Abwechslungsreich, praxisnah`,
-			},
-		],
-		system: 'Du generierst JSON-Daten für einen Jagdblog. Antworte NUR mit validem JSON.',
+- Themen: Abwechslungsreich, praxisnah`;
+
+	const systemPrompt = 'Du generierst JSON-Daten für einen Jagdblog. Antworte NUR mit validem JSON.';
+
+	const response = await generateText(prompt, systemPrompt, 1000);
+
+	try {
+		// Extract JSON from response (in case there's extra text)
+		const jsonMatch = response.match(/\[[\s\S]*\]/);
+		if (jsonMatch) {
+			return JSON.parse(jsonMatch[0]);
+		}
+		return JSON.parse(response);
+	} catch {
+		throw new Error('Failed to parse titles from Replicate response');
+	}
+}
+
+export async function generateImage(imagePrompt: string): Promise<string> {
+	const output = await replicate.run(IMAGE_MODEL, {
+		input: {
+			prompt: imagePrompt,
+			aspect_ratio: '16:9',
+			output_format: 'webp',
+			output_quality: 90,
+		},
 	});
 
-	const content = message.content[0];
-	if (content.type === 'text') {
-		try {
-			// Extract JSON from response (in case there's extra text)
-			const jsonMatch = content.text.match(/\[[\s\S]*\]/);
-			if (jsonMatch) {
-				return JSON.parse(jsonMatch[0]);
-			}
-			return JSON.parse(content.text);
-		} catch {
-			throw new Error('Failed to parse titles from Claude response');
-		}
+	// Output is typically an array with the image URL
+	if (Array.isArray(output) && output.length > 0) {
+		return output[0] as string;
 	}
-	throw new Error('Unexpected response type from Claude');
+	return String(output);
 }
