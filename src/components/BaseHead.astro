@@ -56,9 +56,16 @@ const finalMetaDescription = metaDescription || description;
 const finalOgTitle = ogTitle || title;
 const finalOgDescription = ogDescription || description;
 
-// Handle image URL (can be ImageMetadata object or string URL)
-const imageUrl = typeof image === 'string' ? image : image.src;
-const finalImageUrl = imageUrl.startsWith('http') ? imageUrl : new URL(imageUrl, Astro.url).toString();
+// Handle image URL (can be ImageMetadata object, string URL, or null/undefined)
+let finalImageUrl: string;
+if (!image) {
+	// Use fallback image if no image provided
+	finalImageUrl = new URL(FallbackImage.src, Astro.url).toString();
+} else if (typeof image === 'string') {
+	finalImageUrl = image.startsWith('http') ? image : new URL(image, Astro.url).toString();
+} else {
+	finalImageUrl = new URL(image.src, Astro.url).toString();
+}
 ---
 
 <!-- Global Metadata -->
