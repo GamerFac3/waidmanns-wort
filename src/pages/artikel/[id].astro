@@ -44,16 +44,15 @@ const { data: relatedArticles } = await supabase
 	.order('created_at', { ascending: false })
 	.limit(3);
 
-// Calculate reading time (approx. 200 words per minute)
-function getReadingTime(content: string): number {
-	const words = content?.split(/\s+/).length || 0;
-	return Math.max(1, Math.ceil(words / 200));
-}
-
-const readingTime = articleData ? getReadingTime(articleData.content) : null;
+// Use reading time from database if available, otherwise calculate
+const readingTime = titleData.reading_time_minutes ||
+	(articleData ? Math.max(1, Math.ceil(articleData.content.split(/\s+/).length / 200)) : null);
 
 const categoryInfo = CATEGORIES.find(c => c.id === titleData.category);
 const categoryName = categoryInfo?.name || titleData.category;
+
+// Parse keywords from JSONB field
+const keywords: string[] = Array.isArray(titleData.keywords) ? titleData.keywords : [];
 
 function formatDate(dateStr: string): string {
 	return new Date(dateStr).toLocaleDateString('de-DE', {
@@ -67,7 +66,23 @@ function formatDate(dateStr: string): string {
 <!doctype html>
 <html lang="de">
 	<head>
-		<BaseHead title={`${titleData.title} | ${SITE_TITLE}`} description={titleData.description} />
+		<BaseHead
+			title={`${titleData.title} | ${SITE_TITLE}`}
+			description={titleData.description}
+			metaTitle={titleData.meta_title}
+			metaDescription={titleData.meta_description}
+			ogTitle={titleData.og_title}
+			ogDescription={titleData.og_description}
+			image={titleData.image_url}
+			imageAlt={titleData.image_alt}
+			keywords={keywords}
+			focusKeyword={titleData.focus_keyword}
+			articleType="article"
+			publishedTime={articleData?.generated_at || titleData.created_at}
+			section={categoryName}
+			readingTime={readingTime}
+			wordCount={titleData.word_count}
+		/>
 	</head>
 	<body class="bg-[#faf8f3] text-gray-800">
 		<Header />
@@ -78,7 +93,7 @@ function formatDate(dateStr: string): string {
 				<div class="relative h-[50vh] min-h-[400px] max-h-[600px] overflow-hidden">
 					<img
 						src={titleData.image_url}
-						alt={titleData.title}
+						alt={titleData.image_alt || titleData.title}
 						class="w-full h-full object-cover"
 					/>
 					<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />

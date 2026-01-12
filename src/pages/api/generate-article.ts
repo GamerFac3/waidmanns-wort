@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { supabase, supabaseAdmin } from '../../lib/supabase';
-import { generateArticleContent } from '../../lib/replicate';
+import { generateArticleContent, calculateArticleStats } from '../../lib/replicate';
 
 // GET: Generate article (simulated streaming for UX)
 export const GET: APIRoute = async ({ url }) => {
@@ -42,6 +42,9 @@ export const GET: APIRoute = async ({ url }) => {
 			titleData.category
 		);
 
+		// Calculate article stats for SEO
+		const stats = calculateArticleStats(content);
+
 		// Save to database
 		if (supabaseAdmin) {
 			await supabaseAdmin.from('articles').insert({
@@ -51,7 +54,11 @@ export const GET: APIRoute = async ({ url }) => {
 
 			await supabaseAdmin
 				.from('article_titles')
-				.update({ is_generated: true })
+				.update({
+					is_generated: true,
+					word_count: stats.word_count,
+					reading_time_minutes: stats.reading_time_minutes,
+				})
 				.eq('id', id);
 		}
 
@@ -141,6 +148,9 @@ export const POST: APIRoute = async ({ request }) => {
 			titleData.category
 		);
 
+		// Calculate article stats for SEO
+		const stats = calculateArticleStats(content);
+
 		// Save the article (use admin client for write operations)
 		const { data: newArticle, error: insertError } = await supabaseAdmin
 			.from('articles')
@@ -159,10 +169,14 @@ export const POST: APIRoute = async ({ request }) => {
 			});
 		}
 
-		// Mark title as generated (use admin client for write operations)
+		// Mark title as generated with SEO stats (use admin client for write operations)
 		await supabaseAdmin
 			.from('article_titles')
-			.update({ is_generated: true })
+			.update({
+				is_generated: true,
+				word_count: stats.word_count,
+				reading_time_minutes: stats.reading_time_minutes,
+			})
 			.eq('id', titleId);
 
 		return new Response(JSON.stringify({

@@ -178,37 +178,96 @@ Antworte NUR mit der englischen Bildbeschreibung, keine Erklärungen.`;
 	return generateText(prompt, systemPrompt, 300);
 }
 
-export async function generateNewTitles(count: number = 5): Promise<Array<{
+/**
+ * Calculate article statistics for SEO
+ */
+export function calculateArticleStats(content: string): { word_count: number; reading_time_minutes: number } {
+	const words = content.trim().split(/\s+/).filter(w => w.length > 0);
+	const word_count = words.length;
+	// Average reading speed: 200 words per minute for German text
+	const reading_time_minutes = Math.max(1, Math.ceil(word_count / 200));
+	return { word_count, reading_time_minutes };
+}
+
+/**
+ * Generate a URL-friendly slug from German text
+ */
+export function generateSlug(text: string): string {
+	const germanChars: Record<string, string> = {
+		'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'ß': 'ss',
+		'Ä': 'ae', 'Ö': 'oe', 'Ü': 'ue'
+	};
+
+	return text
+		.toLowerCase()
+		.replace(/[äöüßÄÖÜ]/g, char => germanChars[char] || char)
+		.replace(/[^a-z0-9\s-]/g, '')
+		.replace(/\s+/g, '-')
+		.replace(/-+/g, '-')
+		.replace(/^-|-$/g, '')
+		.slice(0, 80);
+}
+
+export interface ArticleTitleWithSEO {
 	title: string;
 	description: string;
 	category: string;
-}>> {
+	// SEO fields
+	meta_title: string;
+	meta_description: string;
+	focus_keyword: string;
+	keywords: string[];
+	slug: string;
+	og_title: string;
+	og_description: string;
+	image_alt: string;
+}
+
+export async function generateNewTitles(count: number = 5): Promise<ArticleTitleWithSEO[]> {
 	const categoryList = CATEGORIES.map(c => `${c.id}: ${c.name}`).join(', ');
 
-	const prompt = `Generiere ${count} Blogartikel-Ideen für einen deutschen Jagdblog.
+	const prompt = `Generiere ${count} Blogartikel-Ideen für einen deutschen Jagdblog mit vollständigen SEO-Daten.
 
 Kategorien: ${categoryList}
 
-Antworte NUR mit JSON-Array:
-[{"title":"...","description":"...","category":"kategorie_id"}]
+Antworte NUR mit JSON-Array im folgenden Format:
+[{
+  "title": "Artikeltitel (5-10 Wörter, ansprechend)",
+  "description": "Kurze Beschreibung was der Leser lernt (1 Satz)",
+  "category": "kategorie_id",
+  "meta_title": "SEO-Titel für Suchmaschinen (50-60 Zeichen, mit Keyword)",
+  "meta_description": "SEO-Beschreibung für Suchergebnisse (150-160 Zeichen, Call-to-Action)",
+  "focus_keyword": "Haupt-Keyword für SEO (1-3 Wörter)",
+  "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
+  "og_title": "Titel für Social Media (emotional, klickstark)",
+  "og_description": "Beschreibung für Social Media (neugierig machend, 100-120 Zeichen)",
+  "image_alt": "Bildbeschreibung für Barrierefreiheit (beschreibend, mit Keyword)"
+}]
 
-Regeln:
-- Titel: Interessant, konkret, 5-10 Wörter
-- Description: Ein Satz, was der Leser lernt
-- Category: Exakt eine der obigen IDs
-- Themen: Abwechslungsreich, praxisnah`;
+SEO-Regeln:
+- meta_title: Exakt 50-60 Zeichen, Keyword am Anfang, Marke am Ende möglich
+- meta_description: Exakt 150-160 Zeichen, Handlungsaufforderung, Keyword enthalten
+- focus_keyword: Das wichtigste Suchbegriff für diesen Artikel
+- keywords: 5 relevante Suchbegriffe (Mix aus Short-tail und Long-tail)
+- og_title: Emotional, kann Emojis enthalten, macht neugierig
+- og_description: Kurz, prägnant, weckt Interesse
+- image_alt: Beschreibt das Bild, enthält Keyword natürlich
+- Themen: Abwechslungsreich, saisonal relevant, praxisnah`;
 
-	const systemPrompt = 'Du generierst JSON-Daten für einen Jagdblog. Antworte NUR mit validem JSON.';
+	const systemPrompt = 'Du bist ein SEO-Experte für deutschen Content. Generiere präzises JSON mit optimalen SEO-Daten. Antworte NUR mit validem JSON.';
 
-	const response = await generateText(prompt, systemPrompt, 1000);
+	const response = await generateText(prompt, systemPrompt, 2500);
 
 	try {
 		// Extract JSON from response (in case there's extra text)
 		const jsonMatch = response.match(/\[[\s\S]*\]/);
-		if (jsonMatch) {
-			return JSON.parse(jsonMatch[0]);
-		}
-		return JSON.parse(response);
+		const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(response);
+
+		// Add slugs to each title
+		return parsed.map((item: Omit<ArticleTitleWithSEO, 'slug'> & { slug?: string }) => ({
+			...item,
+			slug: item.slug || generateSlug(item.title),
+		}));
 	} catch {
 		throw new Error('Failed to parse titles from Replicate response');
 	}
