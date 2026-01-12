@@ -24,6 +24,21 @@ export const supabaseAdmin = supabaseServiceKey
 		})
 	: null;
 
+// Create a Supabase client for server-side auth operations (OAuth callbacks, etc.)
+export function createSupabaseServerClient(cookies: AstroCookies) {
+	return createClient<Database>(supabaseUrl, supabaseAnonKey, {
+		auth: {
+			autoRefreshToken: false,
+			persistSession: false,
+		},
+		global: {
+			headers: {
+				cookie: cookies.get('sb-access-token')?.value || '',
+			},
+		},
+	});
+}
+
 // Helper to check if user is authenticated using cookie-based tokens
 export async function getUser(cookies: AstroCookies) {
 	const accessToken = cookies.get('sb-access-token')?.value;
