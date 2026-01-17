@@ -5,8 +5,8 @@ const replicate = new Replicate({
 	auth: import.meta.env.REPLICATE_API_TOKEN,
 });
 
-// Cheap text model - Meta Llama 3 8B Instruct
-const TEXT_MODEL = 'meta/meta-llama-3-8b-instruct' as const;
+// Text model - Meta Llama 3 70B Instruct (more capable for creative writing)
+const TEXT_MODEL = 'meta/meta-llama-3-70b-instruct' as const;
 
 // Cheap image model - Flux Schnell (already fast and affordable)
 const IMAGE_MODEL = 'black-forest-labs/flux-schnell' as const;
@@ -223,12 +223,17 @@ export interface ArticleTitleWithSEO {
 	image_alt: string;
 }
 
-export async function generateNewTitles(count: number = 5): Promise<ArticleTitleWithSEO[]> {
+export async function generateNewTitles(count: number = 5, existingTitles: string[] = []): Promise<ArticleTitleWithSEO[]> {
 	const categoryList = CATEGORIES.map(c => `${c.id}: ${c.name}`).join(', ');
+
+	const existingTitlesSection = existingTitles.length > 0
+		? `\n\nBEREITS EXISTIERENDE ARTIKEL (NICHT wiederholen oder zu ähnlich sein):
+${existingTitles.map(t => `- ${t}`).join('\n')}\n`
+		: '';
 
 	const prompt = `Generiere ${count} Blogartikel-Ideen für einen deutschen Jagdblog mit vollständigen SEO-Daten.
 
-Kategorien: ${categoryList}
+Kategorien: ${categoryList}${existingTitlesSection}
 
 Antworte NUR mit JSON-Array im folgenden Format:
 [{
