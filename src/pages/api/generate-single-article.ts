@@ -27,11 +27,13 @@ export const POST: APIRoute = async ({ request }) => {
 
 				// Parse request body
 				let existingTitles: string[] = [];
+				let preferredCategories: string[] = [];
 				try {
 					const body = await request.json();
 					existingTitles = body.existingTitles || [];
+					preferredCategories = body.preferredCategories || [];
 				} catch {
-					// No body or invalid JSON, use empty array
+					// No body or invalid JSON, use empty arrays
 				}
 
 				// Step 1: Generate title
@@ -55,7 +57,7 @@ export const POST: APIRoute = async ({ request }) => {
 				];
 
 				// Generate exactly 1 new title
-				const newTitles = await generateNewTitles(1, allExistingTitles);
+				const newTitles = await generateNewTitles(1, allExistingTitles, preferredCategories);
 
 				if (!newTitles || newTitles.length === 0) {
 					sendEvent({ step: 'error', message: 'Failed to generate title', phase: 'generating_title' });

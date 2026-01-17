@@ -223,7 +223,7 @@ export interface ArticleTitleWithSEO {
 	image_alt: string;
 }
 
-export async function generateNewTitles(count: number = 5, existingTitles: string[] = []): Promise<ArticleTitleWithSEO[]> {
+export async function generateNewTitles(count: number = 5, existingTitles: string[] = [], preferredCategories: string[] = []): Promise<ArticleTitleWithSEO[]> {
 	const categoryList = CATEGORIES.map(c => `${c.id}: ${c.name}`).join(', ');
 
 	const existingTitlesSection = existingTitles.length > 0
@@ -231,9 +231,14 @@ export async function generateNewTitles(count: number = 5, existingTitles: strin
 ${existingTitles.map(t => `- ${t}`).join('\n')}\n`
 		: '';
 
+	const preferredCategoriesSection = preferredCategories.length > 0
+		? `\n\nBEVORZUGTE KATEGORIEN (wähle aus diesen Kategorien, da sie unterrepräsentiert sind):
+${preferredCategories.map(c => `- ${c}`).join('\n')}\n`
+		: '';
+
 	const prompt = `Generiere ${count} Blogartikel-Ideen für einen deutschen Jagdblog mit vollständigen SEO-Daten.
 
-Kategorien: ${categoryList}${existingTitlesSection}
+Kategorien: ${categoryList}${existingTitlesSection}${preferredCategoriesSection}
 
 Antworte NUR mit JSON-Array im folgenden Format:
 [{

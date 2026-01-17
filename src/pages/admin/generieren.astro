@@ -24,7 +24,7 @@ const { count: pendingCount } = await supabase
 	.eq('is_generated', false);
 
 const TARGET_POOL = 5;
-const needed = Math.max(0, TARGET_POOL - (pendingCount || 0));
+const needed = Math.max(0, TARGET_POOL - (generatedCount || 0));
 
 function getCategoryName(categoryId: string): string {
 	const cat = CATEGORIES.find(c => c.id === categoryId);
@@ -58,8 +58,8 @@ function getCategoryName(categoryId: string): string {
 							<div class="text-sm text-gray-500">Gesamt</div>
 						</div>
 						<div class="text-center">
-							<div id="stat-pending" class="text-3xl font-bold text-orange-500">{pendingCount || 0}</div>
-							<div class="text-sm text-gray-500">Bereit</div>
+							<div id="stat-generated" class="text-3xl font-bold text-green-500">{generatedCount || 0}</div>
+							<div class="text-sm text-gray-500">Generiert</div>
 						</div>
 						<div class="text-center">
 							<div class="text-3xl font-bold text-[#4a6741]">{TARGET_POOL}</div>
@@ -203,7 +203,7 @@ function getCategoryName(categoryId: string): string {
 	const completedArticlesSection = document.getElementById('completed-articles') as HTMLDivElement;
 	const completedArticlesList = document.getElementById('completed-articles-list') as HTMLDivElement;
 	const statTotal = document.getElementById('stat-total') as HTMLDivElement;
-	const statPending = document.getElementById('stat-pending') as HTMLDivElement;
+	const statGenerated = document.getElementById('stat-generated') as HTMLDivElement;
 	const neededMessage = document.getElementById('needed-message') as HTMLDivElement;
 	const toastContainer = document.getElementById('toast-container') as HTMLDivElement;
 
@@ -388,7 +388,7 @@ function getCategoryName(categoryId: string): string {
 			const data = await response.json();
 
 			statTotal.textContent = data.total.toString();
-			statPending.textContent = data.pending.toString();
+			statGenerated.textContent = data.generated.toString();
 
 			if (data.needed > 0) {
 				neededMessage.innerHTML = `
@@ -406,7 +406,7 @@ function getCategoryName(categoryId: string): string {
 		}
 	}
 
-	async function generateSingleArticle(existingTitles: string[], articleIndex: number): Promise<string | null> {
+	async function generateSingleArticle(existingTitles: string[], articleIndex: number, preferredCategories: string[] = []): Promise<string | null> {
 		return new Promise((resolve) => {
 			const articleId = `article-${Date.now()}-${articleIndex}`;
 			const article: ArticleProgress = {
@@ -419,13 +419,11 @@ function getCategoryName(categoryId: string): string {
 			renderArticleCard(article, articles.length - 1);
 			updateProgress();
 
-			const eventSource = new EventSource('/api/generate-single-article');
-
-			// POST the existing titles
+			// POST the existing titles and preferred categories
 			fetch('/api/generate-single-article', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ existingTitles })
+				body: JSON.stringify({ existingTitles, preferredCategories })
 			}).then(response => {
 				const reader = response.body?.getReader();
 				const decoder = new TextDecoder();
@@ -564,15 +562,20 @@ function getCategoryName(categoryId: string): string {
 		completedArticlesList.innerHTML = '';
 		progressFeed.querySelectorAll('[id^="article-"]').forEach(el => el.remove());
 
-		// Determine count
+		// Fetch pool status for count and preferred categories
 		let count = parseInt(countOverride.value) || 0;
-		if (count <= 0) {
-			// Fetch from pool status
-			try {
-				const response = await fetch('/api/pool-status');
-				const data = await response.json();
+		let preferredCategories: string[] = [];
+
+		try {
+			const response = await fetch('/api/pool-status');
+			const data = await response.json();
+			if (count <= 0) {
 				count = Math.max(1, data.needed);
-			} catch {
+			}
+			// Use underrepresented categories for balanced generation
+			preferredCategories = data.underrepresented || [];
+		} catch {
+			if (count <= 0) {
 				count = 1;
 			}
 		}
@@ -588,7 +591,7 @@ function getCategoryName(categoryId: string): string {
 		let errorCount = 0;
 
 		for (let i = 0; i < count && !shouldCancel; i++) {
-			const title = await generateSingleArticle(generatedTitles, i);
+			const title = await generateSingleArticle(generatedTitles, i, preferredCategories);
 			if (title) {
 				generatedTitles.push(title);
 				successCount++;
