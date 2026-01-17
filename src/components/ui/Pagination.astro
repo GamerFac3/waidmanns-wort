@@ -48,15 +48,15 @@ function getPageUrl(page: number): string {
 		{currentPage > 1 ? (
 			<a
 				href={getPageUrl(currentPage - 1)}
-				class="flex items-center gap-1 px-4 py-2 text-sm font-medium text-[#2d3e28] bg-white border-2 border-gray-200 rounded-xl hover:border-[#4a6741] hover:bg-[#4a6741]/5 transition-all"
+				class="group flex items-center gap-1 px-4 py-2.5 text-sm font-medium text-[#2d3e28] bg-white border border-gray-200 rounded-xl hover:border-[#4a6741] hover:bg-[#4a6741]/5 hover:shadow-sm transition-all"
 			>
-				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<svg class="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
 				</svg>
 				Zurück
 			</a>
 		) : (
-			<span class="flex items-center gap-1 px-4 py-2 text-sm font-medium text-gray-400 bg-gray-100 border-2 border-gray-100 rounded-xl cursor-not-allowed">
+			<span class="flex items-center gap-1 px-4 py-2.5 text-sm font-medium text-gray-400 bg-gray-50 border border-gray-100 rounded-xl cursor-not-allowed">
 				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
 				</svg>
@@ -70,13 +70,13 @@ function getPageUrl(page: number): string {
 				page === 'ellipsis' ? (
 					<span class="px-3 py-2 text-gray-400">...</span>
 				) : page === currentPage ? (
-					<span class="px-4 py-2 text-sm font-bold text-white bg-[#2d3e28] rounded-xl">
+					<span class="px-4 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-[#2d3e28] to-[#3a4f34] rounded-xl shadow-md">
 						{page}
 					</span>
 				) : (
 					<a
 						href={getPageUrl(page)}
-						class="px-4 py-2 text-sm font-medium text-[#2d3e28] bg-white border-2 border-gray-200 rounded-xl hover:border-[#4a6741] hover:bg-[#4a6741]/5 transition-all"
+						class="px-4 py-2.5 text-sm font-medium text-[#2d3e28] bg-white border border-gray-200 rounded-xl hover:border-[#4a6741] hover:bg-[#4a6741]/5 hover:shadow-sm transition-all"
 					>
 						{page}
 					</a>
@@ -85,7 +85,7 @@ function getPageUrl(page: number): string {
 		</div>
 
 		{/* Mobile: Current / Total */}
-		<span class="sm:hidden px-4 py-2 text-sm text-gray-600">
+		<span class="sm:hidden px-4 py-2.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl">
 			{currentPage} / {totalPages}
 		</span>
 
@@ -93,15 +93,15 @@ function getPageUrl(page: number): string {
 		{currentPage < totalPages ? (
 			<a
 				href={getPageUrl(currentPage + 1)}
-				class="flex items-center gap-1 px-4 py-2 text-sm font-medium text-[#2d3e28] bg-white border-2 border-gray-200 rounded-xl hover:border-[#4a6741] hover:bg-[#4a6741]/5 transition-all"
+				class="group flex items-center gap-1 px-4 py-2.5 text-sm font-medium text-[#2d3e28] bg-white border border-gray-200 rounded-xl hover:border-[#4a6741] hover:bg-[#4a6741]/5 hover:shadow-sm transition-all"
 			>
 				Weiter
-				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<svg class="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
 				</svg>
 			</a>
 		) : (
-			<span class="flex items-center gap-1 px-4 py-2 text-sm font-medium text-gray-400 bg-gray-100 border-2 border-gray-100 rounded-xl cursor-not-allowed">
+			<span class="flex items-center gap-1 px-4 py-2.5 text-sm font-medium text-gray-400 bg-gray-50 border border-gray-100 rounded-xl cursor-not-allowed">
 				Weiter
 				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />

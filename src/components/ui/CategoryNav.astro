@@ -10,15 +10,15 @@ interface Props {
 const { activeCategory, showAll = true, class: className = '' } = Astro.props;
 ---
 
-<nav class:list={['flex flex-wrap gap-2', className]}>
+<nav class:list={['flex gap-2 overflow-x-auto scrollbar-hide pb-2 -mb-2', className]}>
 	{showAll && (
 		<a
 			href="/kategorien"
 			class:list={[
-				'px-4 py-2 text-sm font-medium rounded-full transition-all duration-200',
+				'flex-shrink-0 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200',
 				!activeCategory
-					? 'bg-[#2d3e28] text-white shadow-md'
-					: 'bg-white text-[#2d3e28] border-2 border-gray-200 hover:border-[#4a6741] hover:bg-[#4a6741]/5'
+					? 'bg-gradient-to-r from-[#2d3e28] to-[#3a4f34] text-white shadow-md'
+					: 'bg-white text-[#2d3e28] border border-gray-200 hover:border-[#4a6741] hover:bg-[#4a6741]/5 hover:shadow-sm'
 			]}
 		>
 			Alle
@@ -29,10 +29,10 @@ const { activeCategory, showAll = true, class: className = '' } = Astro.props;
 		<a
 			href={`/kategorien/${cat.id}`}
 			class:list={[
-				'px-4 py-2 text-sm font-medium rounded-full transition-all duration-200',
+				'flex-shrink-0 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200',
 				activeCategory === cat.id
-					? 'bg-[#2d3e28] text-white shadow-md'
-					: 'bg-white text-[#2d3e28] border-2 border-gray-200 hover:border-[#4a6741] hover:bg-[#4a6741]/5'
+					? 'bg-gradient-to-r from-[#2d3e28] to-[#3a4f34] text-white shadow-md'
+					: 'bg-white text-[#2d3e28] border border-gray-200 hover:border-[#4a6741] hover:bg-[#4a6741]/5 hover:shadow-sm'
 			]}
 		>
 			{cat.name}

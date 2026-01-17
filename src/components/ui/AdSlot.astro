@@ -1,0 +1,38 @@
+---
+interface Props {
+	variant?: 'sidebar' | 'inline' | 'banner';
+	class?: string;
+}
+
+const { variant = 'sidebar', class: className = '' } = Astro.props;
+
+const variantStyles = {
+	sidebar: 'w-[300px] h-[600px]',
+	inline: 'w-full h-[250px]',
+	banner: 'w-full h-[90px] md:h-[100px]',
+};
+
+const variantLabels = {
+	sidebar: '300 x 600',
+	inline: 'Responsive',
+	banner: 'Banner',
+};
+---
+
+<div
+	class:list={[
+		'bg-gradient-to-br from-gray-100 to-gray-50 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center',
+		variantStyles[variant],
+		className,
+	]}
+>
+	<div class="text-center p-4">
+		<div class="w-10 h-10 mx-auto mb-2 rounded-full bg-gray-200 flex items-center justify-center">
+			<svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+			</svg>
+		</div>
+		<p class="text-xs font-medium text-gray-400 uppercase tracking-wide">Anzeige</p>
+		<p class="text-xs text-gray-400 mt-1">{variantLabels[variant]}</p>
+	</div>
+</div>

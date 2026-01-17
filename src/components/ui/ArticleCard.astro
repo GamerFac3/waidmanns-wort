@@ -26,31 +26,47 @@ function formatDate(dateStr: string): string {
 }
 ---
 
-<article class="group bg-white rounded-2xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+<article class="group bg-white rounded-2xl shadow-[var(--shadow-card)] overflow-hidden transition-all duration-300 hover:shadow-[var(--shadow-elevated)] hover:-translate-y-1.5 border border-gray-100/50">
 	<a href={`/artikel/${id}`} class="block">
 		{imageUrl ? (
-			<div class="relative h-48 overflow-hidden">
+			<div class="relative h-52 overflow-hidden">
 				<img
 					src={imageUrl}
 					alt={title}
-					class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+					class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
 					loading="lazy"
 				/>
-				<div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+				<div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 				{isNew && (
 					<div class="absolute top-3 right-3">
-						<Badge variant="gold" size="sm">NEU</Badge>
+						<div class="flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-[#c9a54e] to-[#d4b35a] rounded-full shadow-lg">
+							<span class="relative flex h-2 w-2">
+								<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+								<span class="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+							</span>
+							<span class="text-xs font-bold text-[#2d3e28]">NEU</span>
+						</div>
 					</div>
 				)}
+				<!-- Category badge that slides up on hover -->
+				<div class="absolute bottom-0 left-0 right-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+					<Badge size="sm">{categoryName}</Badge>
+				</div>
 			</div>
 		) : (
-			<div class="relative h-48 bg-gradient-to-br from-[#2d3e28] to-[#4a6741] flex items-center justify-center">
+			<div class="relative h-52 bg-gradient-to-br from-[#2d3e28] to-[#4a6741] flex items-center justify-center">
 				<svg class="w-16 h-16 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
 				</svg>
 				{isNew && (
 					<div class="absolute top-3 right-3">
-						<Badge variant="gold" size="sm">NEU</Badge>
+						<div class="flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-[#c9a54e] to-[#d4b35a] rounded-full shadow-lg">
+							<span class="relative flex h-2 w-2">
+								<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+								<span class="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+							</span>
+							<span class="text-xs font-bold text-[#2d3e28]">NEU</span>
+						</div>
 					</div>
 				)}
 			</div>
@@ -58,7 +74,8 @@ function formatDate(dateStr: string): string {
 
 		<div class="p-5">
 			<div class="flex items-center gap-2 mb-3">
-				<Badge size="sm">{categoryName}</Badge>
+				{!imageUrl && <Badge size="sm">{categoryName}</Badge>}
+				{imageUrl && <div class="lg:hidden"><Badge size="sm">{categoryName}</Badge></div>}
 				{date && (
 					<span class="text-sm text-gray-500">{formatDate(date)}</span>
 				)}
@@ -72,9 +89,9 @@ function formatDate(dateStr: string): string {
 				{description}
 			</p>
 
-			<div class="mt-4 flex items-center text-[#4a6741] text-sm font-medium">
+			<div class="mt-4 flex items-center text-[#4a6741] text-sm font-medium group-hover:text-[#c9a54e] transition-colors">
 				<span>Weiterlesen</span>
-				<svg class="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<svg class="w-4 h-4 ml-1 transform group-hover:translate-x-2 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
 				</svg>
 			</div>

@@ -4,47 +4,62 @@ const today = new Date();
 ---
 
 <footer class="bg-[#2d3e28] text-[#faf8f3]">
+	<!-- Decorative gold gradient line -->
+	<div class="h-1 bg-gradient-to-r from-transparent via-[#c9a54e] to-transparent"></div>
+
 	<!-- Main Footer -->
-	<div class="max-w-6xl mx-auto px-4 py-12">
-		<div class="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+	<div class="max-w-7xl mx-auto px-4 py-16">
+		<div class="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
 			<!-- About -->
 			<div class="lg:col-span-2">
-				<div class="flex items-center gap-3 mb-4">
-					<div class="w-10 h-10 bg-[#c9a54e] rounded-full flex items-center justify-center">
+				<div class="flex items-center gap-3 mb-6">
+					<div class="w-12 h-12 bg-gradient-to-br from-[#c9a54e] to-[#a88a3e] rounded-full flex items-center justify-center shadow-lg">
 						<svg class="w-6 h-6 text-[#2d3e28]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
 						</svg>
 					</div>
-					<span class="text-xl font-bold">{SITE_TITLE}</span>
+					<span class="text-2xl font-bold">{SITE_TITLE}</span>
 				</div>
-				<p class="text-[#faf8f3]/70 leading-relaxed mb-4 max-w-md">
+				<p class="text-[#faf8f3]/70 leading-relaxed mb-4 max-w-md text-base">
 					{AUTHOR.bio}
 				</p>
-				<p class="text-sm text-[#c9a54e]">
+				<p class="text-sm text-[#c9a54e] font-medium flex items-center gap-2">
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+					</svg>
 					{AUTHOR.experience}
 				</p>
 			</div>
 
 			<!-- Categories -->
 			<div>
-				<h3 class="font-bold text-lg mb-4">Kategorien</h3>
-				<ul class="space-y-2">
+				<h3 class="font-bold text-lg mb-6 flex items-center gap-2">
+					<span class="w-1.5 h-1.5 rounded-full bg-[#c9a54e]"></span>
+					Kategorien
+				</h3>
+				<ul class="space-y-3">
 					{CATEGORIES.slice(0, 6).map((cat) => (
 						<li>
 							<a
 								href={`/kategorien/${cat.id}`}
-								class="text-[#faf8f3]/70 hover:text-[#c9a54e] transition-colors text-sm"
+								class="group flex items-center gap-2 text-[#faf8f3]/70 hover:text-[#c9a54e] transition-colors text-sm"
 							>
-								{cat.name}
+								<svg class="w-3 h-3 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+								</svg>
+								<span class="group-hover:translate-x-1 transition-transform duration-200">{cat.name}</span>
 							</a>
 						</li>
 					))}
-					<li>
+					<li class="pt-2">
 						<a
 							href="/kategorien"
-							class="text-[#c9a54e] hover:text-[#c9a54e]/80 transition-colors text-sm font-medium"
+							class="inline-flex items-center gap-1 text-[#c9a54e] hover:text-[#c9a54e]/80 transition-colors text-sm font-medium group"
 						>
-							Alle anzeigen &rarr;
+							Alle anzeigen
+							<svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+							</svg>
 						</a>
 					</li>
 				</ul>
@@ -52,26 +67,41 @@ const today = new Date();
 
 			<!-- Quick Links -->
 			<div>
-				<h3 class="font-bold text-lg mb-4">Links</h3>
-				<ul class="space-y-2">
+				<h3 class="font-bold text-lg mb-6 flex items-center gap-2">
+					<span class="w-1.5 h-1.5 rounded-full bg-[#c9a54e]"></span>
+					Links
+				</h3>
+				<ul class="space-y-3">
 					<li>
-						<a href="/" class="text-[#faf8f3]/70 hover:text-[#c9a54e] transition-colors text-sm">
-							Startseite
+						<a href="/" class="group flex items-center gap-2 text-[#faf8f3]/70 hover:text-[#c9a54e] transition-colors text-sm">
+							<svg class="w-3 h-3 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+							</svg>
+							<span class="group-hover:translate-x-1 transition-transform duration-200">Startseite</span>
 						</a>
 					</li>
 					<li>
-						<a href="/about" class="text-[#faf8f3]/70 hover:text-[#c9a54e] transition-colors text-sm">
-							Über mich
+						<a href="/about" class="group flex items-center gap-2 text-[#faf8f3]/70 hover:text-[#c9a54e] transition-colors text-sm">
+							<svg class="w-3 h-3 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+							</svg>
+							<span class="group-hover:translate-x-1 transition-transform duration-200">Über mich</span>
 						</a>
 					</li>
 					<li>
-						<a href="/kategorien" class="text-[#faf8f3]/70 hover:text-[#c9a54e] transition-colors text-sm">
-							Kategorien
+						<a href="/kategorien" class="group flex items-center gap-2 text-[#faf8f3]/70 hover:text-[#c9a54e] transition-colors text-sm">
+							<svg class="w-3 h-3 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+							</svg>
+							<span class="group-hover:translate-x-1 transition-transform duration-200">Kategorien</span>
 						</a>
 					</li>
 					<li>
-						<a href="/suche" class="text-[#faf8f3]/70 hover:text-[#c9a54e] transition-colors text-sm">
-							Suche
+						<a href="/suche" class="group flex items-center gap-2 text-[#faf8f3]/70 hover:text-[#c9a54e] transition-colors text-sm">
+							<svg class="w-3 h-3 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+							</svg>
+							<span class="group-hover:translate-x-1 transition-transform duration-200">Suche</span>
 						</a>
 					</li>
 				</ul>
@@ -81,12 +111,15 @@ const today = new Date();
 
 	<!-- Bottom Bar -->
 	<div class="border-t border-white/10">
-		<div class="max-w-6xl mx-auto px-4 py-6">
+		<div class="max-w-7xl mx-auto px-4 py-6">
 			<div class="flex flex-col sm:flex-row justify-between items-center gap-4">
 				<p class="text-sm text-[#faf8f3]/60">
 					&copy; {today.getFullYear()} {AUTHOR.name}. Alle Rechte vorbehalten.
 				</p>
-				<p class="text-sm text-[#c9a54e] font-medium">
+				<p class="text-sm text-[#c9a54e] font-medium flex items-center gap-2">
+					<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+						<path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+					</svg>
 					Waidmannsheil!
 				</p>
 			</div>

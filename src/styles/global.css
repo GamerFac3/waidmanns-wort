@@ -19,10 +19,71 @@
 
 @theme {
 	--font-family-serif: "Atkinson", Georgia, serif;
+	/* Shadow tokens */
+	--shadow-soft: 0 2px 8px -2px rgba(0, 0, 0, 0.08);
+	--shadow-card: 0 4px 12px -4px rgba(0, 0, 0, 0.1);
+	--shadow-elevated: 0 8px 24px -8px rgba(0, 0, 0, 0.15);
 }
 
 @layer base {
+	html {
+		scroll-behavior: smooth;
+	}
 	body {
 		font-family: var(--font-family-serif);
 	}
+	::selection {
+		background-color: #c9a54e;
+		color: #2d3e28;
+	}
+}
+
+@layer utilities {
+	/* Glassmorphism utilities */
+	.glass {
+		background: rgba(255, 255, 255, 0.7);
+		backdrop-filter: blur(12px);
+		-webkit-backdrop-filter: blur(12px);
+	}
+	.glass-dark {
+		background: rgba(45, 62, 40, 0.85);
+		backdrop-filter: blur(12px);
+		-webkit-backdrop-filter: blur(12px);
+	}
+
+	/* Hide scrollbar utility */
+	.scrollbar-hide {
+		-ms-overflow-style: none;
+		scrollbar-width: none;
+	}
+	.scrollbar-hide::-webkit-scrollbar {
+		display: none;
+	}
+}
+
+/* Floating animation for hero backgrounds */
+@keyframes float {
+	0%, 100% {
+		transform: translateY(0) rotate(0deg);
+	}
+	50% {
+		transform: translateY(-10px) rotate(2deg);
+	}
+}
+
+@keyframes float-delayed {
+	0%, 100% {
+		transform: translateY(0) rotate(0deg);
+	}
+	50% {
+		transform: translateY(-8px) rotate(-2deg);
+	}
+}
+
+.animate-float {
+	animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+	animation: float-delayed 8s ease-in-out infinite;
 }
