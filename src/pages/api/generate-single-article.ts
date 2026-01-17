@@ -67,6 +67,22 @@ export const POST: APIRoute = async ({ request }) => {
 
 				const titleData = newTitles[0];
 
+				// Check if title already exists (duplicate check)
+				const normalizedNewTitle = titleData.title.toLowerCase().trim();
+				const isDuplicate = allExistingTitles.some(existing => {
+					const normalizedExisting = existing.toLowerCase().trim();
+					// Check for exact match or very similar titles
+					return normalizedExisting === normalizedNewTitle ||
+						normalizedExisting.includes(normalizedNewTitle) ||
+						normalizedNewTitle.includes(normalizedExisting);
+				});
+
+				if (isDuplicate) {
+					sendEvent({ step: 'error', message: `Titel "${titleData.title}" existiert bereits oder ist zu ähnlich`, phase: 'generating_title' });
+					controller.close();
+					return;
+				}
+
 				// Insert title into database
 				const { data: insertedTitle, error: insertError } = await supabaseAdmin
 					.from('article_titles')

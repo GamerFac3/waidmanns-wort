@@ -227,8 +227,10 @@ export async function generateNewTitles(count: number = 5, existingTitles: strin
 	const categoryList = CATEGORIES.map(c => `${c.id}: ${c.name}`).join(', ');
 
 	const existingTitlesSection = existingTitles.length > 0
-		? `\n\nBEREITS EXISTIERENDE ARTIKEL (NICHT wiederholen oder zu ähnlich sein):
-${existingTitles.map(t => `- ${t}`).join('\n')}\n`
+		? `\n\nWICHTIG - DIESE TITEL EXISTIEREN BEREITS (generiere KOMPLETT ANDERE Themen!):
+${existingTitles.slice(-50).map(t => `- ${t}`).join('\n')}
+
+Du MUSST völlig neue, einzigartige Themen wählen die NICHT in obiger Liste sind!\n`
 		: '';
 
 	const preferredCategoriesSection = preferredCategories.length > 0
