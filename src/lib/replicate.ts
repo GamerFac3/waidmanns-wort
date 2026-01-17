@@ -5,8 +5,8 @@ const replicate = new Replicate({
 	auth: import.meta.env.REPLICATE_API_TOKEN,
 });
 
-// Text model - Meta Llama 3 70B Instruct (more capable for creative writing)
-const TEXT_MODEL = 'meta/meta-llama-3-70b-instruct' as const;
+// Text model - Meta Llama 3.1 405B Instruct (larger model for more creative, nuanced writing)
+const TEXT_MODEL = 'meta/meta-llama-3.1-405b-instruct' as const;
 
 // Cheap image model - Flux Schnell (already fast and affordable)
 const IMAGE_MODEL = 'black-forest-labs/flux-schnell' as const;
@@ -50,33 +50,26 @@ DEINE EIGENHEITEN:
 - Bekannte Geschichten zum Erwähnen: ${AUTHOR.traits.stories.join('; ')}
 
 SCHREIBSTIL:
-- Persönlich, aus der Ich-Perspektive
-- Bodenständig, traditionsbewusst
-- Fachkundig mit korrekter Jägersprache (Waidmannssprache)
-- Anekdotenhaft mit eigenen Erlebnissen - beziehe dich auf obige Details!
-- Respektvoll gegenüber Natur und Wild
-
-JÄGERSPRACHE:
-- "Stück" statt "Tier"
-- "erlegen" statt "schießen"
-- "Revier" für Jagdgebiet
-- "ansprechen" für Wild beurteilen
-- "Waidmannsheil" als Gruß
+- Schreibe aus der Ich-Perspektive als Geschichtenerzähler
+- Verknüpfe Themen mit persönlichen Erlebnissen wenn passend
+- Teile Erfolge und Misserfolge - das macht es authentisch
+- Bodenständig, fachkundig, respektvoll gegenüber Natur und Wild
+- Verwende Jägersprache natürlich (Stück, erlegen, Revier, ansprechen)
 
 WICHTIG:
 - Bayerische/deutsche Verhältnisse
-- Erwähne gelegentlich deinen Jagdhund Alma, dein Revier Tannberg, oder Erlebnisse mit Franz Huber
+- Beziehe dich gelegentlich auf obige persönliche Details
 - Authentisch - auch Fehler zugeben
-- Keine Werbung
-- Bleibe konsistent mit den obigen Fakten!`;
+- Keine Werbung oder belehrenden Ton
+- Bleibe konsistent mit den Fakten!`;
 
-async function generateText(prompt: string, systemPrompt: string = SYSTEM_PROMPT, maxTokens: number = 2048): Promise<string> {
+async function generateText(prompt: string, systemPrompt: string = SYSTEM_PROMPT, maxTokens: number = 2048, temperature: number = 0.85): Promise<string> {
 	const output = await replicate.run(TEXT_MODEL, {
 		input: {
 			prompt: prompt,
 			system_prompt: systemPrompt,
 			max_tokens: maxTokens,
-			temperature: 0.7,
+			temperature: temperature,
 			top_p: 0.9,
 		},
 	});
@@ -118,23 +111,30 @@ function buildArticlePrompt(title: string, description: string, category: string
 	const categoryInfo = CATEGORIES.find(c => c.id === category);
 	const categoryName = categoryInfo?.name || category;
 
-	return `Schreibe einen Blogartikel.
+	return `Schreibe einen persönlichen Blogartikel aus deiner Sicht als erfahrener Jäger.
 
 TITEL: ${title}
 THEMA: ${description}
 KATEGORIE: ${categoryName}
 
-FORMATIERUNG (strikt einhalten):
-- Beginne DIREKT mit dem ersten Absatz (kein Titel, keine Einleitung wie "Heute möchte ich...")
-- Verwende ## für Zwischenüberschriften (2-3 im Artikel)
-- Normale Absätze mit Leerzeile dazwischen
-- Aufzählungen mit "- " am Zeilenanfang
-- KEINE horizontalen Linien (---)
-- KEINE Codeblöcke
-- KEIN HTML
-- Länge: 600-800 Wörter
+SCHREIBSTIL:
+- Schreibe in der Ich-Perspektive - erzähle aus deinem Leben
+- Verknüpfe das Thema wenn passend mit eigenen Erlebnissen
+- Teile deine ehrliche Meinung als erfahrener Praktiker
+- Schreibe wie am Stammtisch - authentisch und nahbar
+- Verwende Jägersprache natürlich, nicht belehrend
 
-Schreibe authentisch und persönlich aus deiner Erfahrung als Jäger.`;
+NICHT MACHEN:
+- Keine objektiven Lexikon-Artikel
+- Keine Einleitungen wie "Heute möchte ich..." oder "In diesem Artikel..."
+- Keine belehrenden Ratschläge
+
+FORMATIERUNG:
+- Beginne DIREKT mit dem Inhalt
+- Verwende ## für 2-3 Zwischenüberschriften
+- Normale Absätze mit Leerzeile dazwischen
+- KEINE horizontalen Linien, Codeblöcke oder HTML
+- Länge: 600-800 Wörter`;
 }
 
 export async function generateArticleContent(
