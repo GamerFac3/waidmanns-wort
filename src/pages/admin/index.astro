@@ -141,8 +141,8 @@ function formatDate(dateStr: string): string {
 						</div>
 					</a>
 
-					<button
-						id="generate-titles-btn"
+					<a
+						href="/admin/generieren"
 						class="w-full flex items-center gap-3 p-4 bg-[#c9a54e] text-[#2d3e28] rounded-xl hover:bg-[#b8943d] transition-colors group"
 					>
 						<div class="w-10 h-10 bg-white/30 rounded-lg flex items-center justify-center group-hover:bg-white/40 transition-colors">
@@ -151,10 +151,10 @@ function formatDate(dateStr: string): string {
 							</svg>
 						</div>
 						<div class="text-left">
-							<p class="font-semibold">Titel generieren</p>
-							<p class="text-sm text-[#2d3e28]/70">Mit KI neue Titel erstellen</p>
+							<p class="font-semibold">Artikel generieren</p>
+							<p class="text-sm text-[#2d3e28]/70">Neue Artikel mit KI erstellen</p>
 						</div>
-					</button>
+					</a>
 
 					<a
 						href="/admin/bilder"
@@ -262,33 +262,4 @@ function formatDate(dateStr: string): string {
 		</div>
 	</div>
 
-	<script>
-		const generateBtn = document.getElementById('generate-titles-btn') as HTMLButtonElement;
-		const btnText = generateBtn.querySelector('p.font-semibold') as HTMLParagraphElement;
-		const btnSubtext = generateBtn.querySelector('p.text-sm') as HTMLParagraphElement;
-
-		generateBtn.addEventListener('click', async () => {
-			generateBtn.disabled = true;
-			btnText.textContent = 'Generiere...';
-			btnSubtext.textContent = 'Bitte warten';
-
-			try {
-				const response = await fetch('/api/generate-titles', { method: 'POST' });
-				const data = await response.json();
-
-				if (data.success) {
-					alert(`${data.generated} neue Titel generiert!`);
-					window.location.reload();
-				} else {
-					alert('Fehler: ' + (data.error || 'Unbekannter Fehler'));
-				}
-			} catch (error) {
-				alert('Fehler beim Generieren der Titel');
-			}
-
-			generateBtn.disabled = false;
-			btnText.textContent = 'Titel generieren';
-			btnSubtext.textContent = 'Mit KI neue Titel erstellen';
-		});
-	</script>
 </AdminLayout>

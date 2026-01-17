@@ -1,0 +1,638 @@
+---
+import AdminLayout from '../../components/AdminLayout.astro';
+import { getUser, supabase } from '../../lib/supabase';
+import { CATEGORIES } from '../../consts';
+
+const user = await getUser(Astro.cookies);
+if (!user) {
+	return Astro.redirect('/admin/login');
+}
+
+// Get initial pool status
+const { count: totalTitles } = await supabase
+	.from('article_titles')
+	.select('*', { count: 'exact', head: true });
+
+const { count: generatedCount } = await supabase
+	.from('article_titles')
+	.select('*', { count: 'exact', head: true })
+	.eq('is_generated', true);
+
+const { count: pendingCount } = await supabase
+	.from('article_titles')
+	.select('*', { count: 'exact', head: true })
+	.eq('is_generated', false);
+
+const TARGET_POOL = 5;
+const needed = Math.max(0, TARGET_POOL - (pendingCount || 0));
+
+function getCategoryName(categoryId: string): string {
+	const cat = CATEGORIES.find(c => c.id === categoryId);
+	return cat?.name || categoryId;
+}
+---
+
+<AdminLayout title="Artikel Generieren">
+	<!-- Mobile Title -->
+	<h1 class="text-2xl font-bold text-[#2d3e28] mb-2 lg:hidden">Artikel Generieren</h1>
+	<p class="text-gray-500 mb-6 lg:hidden">Automatische Erstellung von Blogartikeln mit KI</p>
+
+	<!-- Desktop Subtitle (title comes from AdminLayout header) -->
+	<p class="text-gray-500 mb-6 hidden lg:block">Automatische Erstellung von Blogartikeln mit KI</p>
+
+	<!-- Toast Container -->
+	<div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+	<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+		<!-- Left Column: Pool Status & Controls -->
+		<div class="lg:col-span-1 space-y-6">
+			<!-- Pool Status Card -->
+			<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+				<div class="px-6 py-4 border-b border-gray-100">
+					<h2 class="text-lg font-bold text-[#2d3e28]">Pool Status</h2>
+				</div>
+				<div class="p-6">
+					<div class="grid grid-cols-3 gap-4 mb-6">
+						<div class="text-center">
+							<div id="stat-total" class="text-3xl font-bold text-[#2d3e28]">{totalTitles || 0}</div>
+							<div class="text-sm text-gray-500">Gesamt</div>
+						</div>
+						<div class="text-center">
+							<div id="stat-pending" class="text-3xl font-bold text-orange-500">{pendingCount || 0}</div>
+							<div class="text-sm text-gray-500">Bereit</div>
+						</div>
+						<div class="text-center">
+							<div class="text-3xl font-bold text-[#4a6741]">{TARGET_POOL}</div>
+							<div class="text-sm text-gray-500">Ziel</div>
+						</div>
+					</div>
+
+					<div id="needed-message" class="text-center py-4 px-4 bg-gray-50 rounded-xl mb-6">
+						{needed > 0 ? (
+							<p class="text-gray-700">
+								System wird <span class="font-bold text-[#2d3e28]">{needed}</span> neue Artikel generieren
+							</p>
+						) : (
+							<p class="text-green-600 font-medium">Pool ist voll! Keine Generierung nötig.</p>
+						)}
+					</div>
+
+					<!-- Manual Count Override -->
+					<div class="mb-6">
+						<label class="block text-sm font-medium text-gray-700 mb-2">Anzahl überschreiben (optional)</label>
+						<input
+							type="number"
+							id="count-override"
+							min="1"
+							max="10"
+							placeholder="Auto"
+							class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#4a6741] focus:border-transparent transition-all"
+						/>
+					</div>
+
+					<!-- Start Button -->
+					<button
+						id="start-btn"
+						class="w-full flex items-center justify-center gap-3 px-6 py-4 bg-[#2d3e28] text-white rounded-xl hover:bg-[#4a6741] transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+					>
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+						</svg>
+						<span id="start-btn-text">Generation starten</span>
+					</button>
+
+					<!-- Cancel Button (hidden by default) -->
+					<button
+						id="cancel-btn"
+						class="hidden w-full flex items-center justify-center gap-3 px-6 py-4 mt-3 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors font-semibold"
+					>
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+						</svg>
+						<span>Generation abbrechen</span>
+					</button>
+				</div>
+			</div>
+
+			<!-- Completed Articles Preview -->
+			<div id="completed-articles" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hidden">
+				<div class="px-6 py-4 border-b border-gray-100">
+					<h2 class="text-lg font-bold text-[#2d3e28]">Fertige Artikel</h2>
+				</div>
+				<div id="completed-articles-list" class="p-4 space-y-3 max-h-96 overflow-y-auto">
+					<!-- Filled dynamically -->
+				</div>
+			</div>
+		</div>
+
+		<!-- Right Column: Progress Feed -->
+		<div class="lg:col-span-2">
+			<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+				<div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+					<h2 class="text-lg font-bold text-[#2d3e28]">Fortschritt</h2>
+					<div id="progress-indicator" class="hidden flex items-center gap-3">
+						<span id="progress-text" class="text-sm text-gray-500">0/0</span>
+						<div class="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+							<div id="progress-bar" class="h-full bg-[#4a6741] transition-all duration-300" style="width: 0%"></div>
+						</div>
+					</div>
+				</div>
+				<div id="progress-feed" class="p-4 space-y-4 min-h-[400px] max-h-[600px] overflow-y-auto">
+					<!-- Initial state -->
+					<div id="empty-state" class="flex flex-col items-center justify-center py-16 text-center">
+						<div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+							<svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+							</svg>
+						</div>
+						<p class="text-gray-500 mb-2">Keine laufende Generierung</p>
+						<p class="text-sm text-gray-400">Klicken Sie auf "Generation starten" um zu beginnen</p>
+					</div>
+
+					<!-- Article progress cards will be added here dynamically -->
+				</div>
+			</div>
+		</div>
+	</div>
+</AdminLayout>
+
+<script>
+	interface ArticleProgress {
+		id: string;
+		status: 'pending' | 'in_progress' | 'completed' | 'error';
+		title?: string;
+		description?: string;
+		imageUrl?: string;
+		wordCount?: number;
+		readingTime?: number;
+		currentStep: string;
+		steps: StepStatus[];
+		error?: string;
+	}
+
+	interface StepStatus {
+		name: string;
+		label: string;
+		status: 'pending' | 'in_progress' | 'completed' | 'error';
+		detail?: string;
+	}
+
+	// State
+	let isGenerating = false;
+	let shouldCancel = false;
+	let articles: ArticleProgress[] = [];
+	let completedArticles: Array<{
+		id: string;
+		title: string;
+		imageUrl: string;
+		wordCount: number;
+	}> = [];
+
+	// Elements
+	const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
+	const startBtnText = document.getElementById('start-btn-text') as HTMLSpanElement;
+	const cancelBtn = document.getElementById('cancel-btn') as HTMLButtonElement;
+	const countOverride = document.getElementById('count-override') as HTMLInputElement;
+	const progressFeed = document.getElementById('progress-feed') as HTMLDivElement;
+	const emptyState = document.getElementById('empty-state') as HTMLDivElement;
+	const progressIndicator = document.getElementById('progress-indicator') as HTMLDivElement;
+	const progressBar = document.getElementById('progress-bar') as HTMLDivElement;
+	const progressText = document.getElementById('progress-text') as HTMLSpanElement;
+	const completedArticlesSection = document.getElementById('completed-articles') as HTMLDivElement;
+	const completedArticlesList = document.getElementById('completed-articles-list') as HTMLDivElement;
+	const statTotal = document.getElementById('stat-total') as HTMLDivElement;
+	const statPending = document.getElementById('stat-pending') as HTMLDivElement;
+	const neededMessage = document.getElementById('needed-message') as HTMLDivElement;
+	const toastContainer = document.getElementById('toast-container') as HTMLDivElement;
+
+	function showToast(message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') {
+		const colors = {
+			success: 'border-green-500 bg-green-50',
+			error: 'border-red-500 bg-red-50',
+			warning: 'border-orange-500 bg-orange-50',
+			info: 'border-blue-500 bg-blue-50'
+		};
+		const icons = {
+			success: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />',
+			error: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />',
+			warning: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />',
+			info: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />'
+		};
+		const iconColors = {
+			success: 'text-green-500',
+			error: 'text-red-500',
+			warning: 'text-orange-500',
+			info: 'text-blue-500'
+		};
+
+		const toast = document.createElement('div');
+		toast.className = `flex items-center gap-3 px-4 py-3 rounded-lg border-l-4 shadow-lg transform translate-x-full transition-transform duration-300 ${colors[type]}`;
+		toast.innerHTML = `
+			<svg class="w-5 h-5 ${iconColors[type]}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				${icons[type]}
+			</svg>
+			<span class="text-gray-700 flex-1">${message}</span>
+			<button class="text-gray-400 hover:text-gray-600 transition-colors">
+				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+				</svg>
+			</button>
+		`;
+
+		toastContainer.appendChild(toast);
+
+		// Animate in
+		requestAnimationFrame(() => {
+			toast.classList.remove('translate-x-full');
+		});
+
+		// Close button
+		toast.querySelector('button')?.addEventListener('click', () => {
+			removeToast(toast);
+		});
+
+		// Auto dismiss
+		setTimeout(() => {
+			removeToast(toast);
+		}, 5000);
+	}
+
+	function removeToast(toast: HTMLElement) {
+		toast.classList.add('translate-x-full', 'opacity-0');
+		setTimeout(() => toast.remove(), 300);
+	}
+
+	function createStepsList(): StepStatus[] {
+		return [
+			{ name: 'generating_title', label: 'Titel generieren', status: 'pending' },
+			{ name: 'generating_content', label: 'Inhalt erstellen', status: 'pending' },
+			{ name: 'generating_image_prompt', label: 'Bildprompt erstellen', status: 'pending' },
+			{ name: 'generating_image', label: 'Bild generieren', status: 'pending' },
+			{ name: 'uploading', label: 'Hochladen & speichern', status: 'pending' },
+		];
+	}
+
+	function renderArticleCard(article: ArticleProgress, index: number) {
+		const statusColors = {
+			pending: 'bg-gray-200',
+			in_progress: 'bg-blue-500',
+			completed: 'bg-green-500',
+			error: 'bg-red-500'
+		};
+
+		const statusIcons = {
+			pending: '○',
+			in_progress: '◐',
+			completed: '●',
+			error: '✕'
+		};
+
+		const existingCard = document.getElementById(`article-${article.id}`);
+
+		const html = `
+			<div class="border border-gray-200 rounded-xl overflow-hidden ${article.status === 'in_progress' ? 'ring-2 ring-blue-500 ring-opacity-50' : ''} ${article.status === 'error' ? 'border-red-300 bg-red-50' : ''}">
+				<div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+					<div class="flex items-center gap-2">
+						<span class="w-6 h-6 rounded-full ${statusColors[article.status]} flex items-center justify-center text-white text-xs font-bold ${article.status === 'in_progress' ? 'animate-pulse' : ''}">
+							${statusIcons[article.status]}
+						</span>
+						<span class="font-medium text-[#2d3e28]">Artikel ${index + 1}</span>
+						${article.title ? `<span class="text-gray-500 text-sm truncate max-w-xs hidden sm:inline">: "${article.title}"</span>` : ''}
+					</div>
+					${article.status === 'completed' && article.imageUrl ? `
+						<img src="${article.imageUrl}" alt="" class="w-12 h-8 object-cover rounded" />
+					` : ''}
+				</div>
+				<div class="p-4">
+					${article.status === 'pending' ? `
+						<p class="text-gray-500 text-sm">Warte...</p>
+					` : `
+						<div class="space-y-2">
+							${article.steps.map(step => {
+								const stepIcons = {
+									pending: '<span class="text-gray-400">○</span>',
+									in_progress: '<span class="text-blue-500 animate-spin inline-block">⟳</span>',
+									completed: '<span class="text-green-500">✓</span>',
+									error: '<span class="text-red-500">✕</span>'
+								};
+								const stepColors = {
+									pending: 'text-gray-400',
+									in_progress: 'text-blue-600 font-medium',
+									completed: 'text-gray-600',
+									error: 'text-red-600'
+								};
+								return `
+									<div class="flex items-center gap-2 text-sm ${stepColors[step.status]}">
+										${stepIcons[step.status]}
+										<span>${step.label}</span>
+										${step.detail ? `<span class="text-gray-400 text-xs">(${step.detail})</span>` : ''}
+									</div>
+								`;
+							}).join('')}
+						</div>
+						${article.error ? `
+							<div class="mt-3 p-3 bg-red-100 rounded-lg text-red-700 text-sm">
+								<strong>Fehler:</strong> ${article.error}
+							</div>
+						` : ''}
+					`}
+				</div>
+			</div>
+		`;
+
+		if (existingCard) {
+			existingCard.outerHTML = html.replace('<div class="border', `<div id="article-${article.id}" class="border`);
+		} else {
+			const wrapper = document.createElement('div');
+			wrapper.innerHTML = html.replace('<div class="border', `<div id="article-${article.id}" class="border`);
+			progressFeed.appendChild(wrapper.firstElementChild!);
+		}
+	}
+
+	function updateProgress() {
+		const total = articles.length;
+		const completed = articles.filter(a => a.status === 'completed' || a.status === 'error').length;
+
+		progressText.textContent = `${completed}/${total}`;
+		progressBar.style.width = `${(completed / total) * 100}%`;
+
+		// Scroll to active article
+		const activeCard = document.querySelector('[id^="article-"]:last-child');
+		if (activeCard) {
+			activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+		}
+	}
+
+	function addCompletedArticle(article: { id: string; title: string; imageUrl: string; wordCount: number }) {
+		completedArticles.push(article);
+		completedArticlesSection.classList.remove('hidden');
+
+		const card = document.createElement('a');
+		card.href = `/admin/artikel/${article.id}`;
+		card.className = 'flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors group';
+		card.innerHTML = `
+			<img src="${article.imageUrl}" alt="" class="w-14 h-10 object-cover rounded-lg flex-shrink-0" />
+			<div class="flex-1 min-w-0">
+				<p class="font-medium text-[#2d3e28] text-sm truncate group-hover:text-[#4a6741]">${article.title}</p>
+				<p class="text-xs text-gray-500">${article.wordCount} Wörter</p>
+			</div>
+		`;
+		completedArticlesList.appendChild(card);
+	}
+
+	async function refreshPoolStatus() {
+		try {
+			const response = await fetch('/api/pool-status');
+			const data = await response.json();
+
+			statTotal.textContent = data.total.toString();
+			statPending.textContent = data.pending.toString();
+
+			if (data.needed > 0) {
+				neededMessage.innerHTML = `
+					<p class="text-gray-700">
+						System wird <span class="font-bold text-[#2d3e28]">${data.needed}</span> neue Artikel generieren
+					</p>
+				`;
+			} else {
+				neededMessage.innerHTML = `
+					<p class="text-green-600 font-medium">Pool ist voll! Keine Generierung nötig.</p>
+				`;
+			}
+		} catch (error) {
+			console.error('Failed to refresh pool status:', error);
+		}
+	}
+
+	async function generateSingleArticle(existingTitles: string[], articleIndex: number): Promise<string | null> {
+		return new Promise((resolve) => {
+			const articleId = `article-${Date.now()}-${articleIndex}`;
+			const article: ArticleProgress = {
+				id: articleId,
+				status: 'in_progress',
+				currentStep: 'generating_title',
+				steps: createStepsList()
+			};
+			articles.push(article);
+			renderArticleCard(article, articles.length - 1);
+			updateProgress();
+
+			const eventSource = new EventSource('/api/generate-single-article');
+
+			// POST the existing titles
+			fetch('/api/generate-single-article', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ existingTitles })
+			}).then(response => {
+				const reader = response.body?.getReader();
+				const decoder = new TextDecoder();
+
+				function read() {
+					reader?.read().then(({ done, value }) => {
+						if (done) {
+							resolve(article.title || null);
+							return;
+						}
+
+						const text = decoder.decode(value);
+						const lines = text.split('\n\n');
+
+						for (const line of lines) {
+							if (line.startsWith('data: ')) {
+								try {
+									const data = JSON.parse(line.slice(6));
+									handleEvent(data);
+								} catch (e) {
+									// Ignore parse errors
+								}
+							}
+						}
+
+						read();
+					});
+				}
+
+				read();
+			}).catch(error => {
+				article.status = 'error';
+				article.error = error.message;
+				renderArticleCard(article, articles.indexOf(article));
+				updateProgress();
+				resolve(null);
+			});
+
+			function handleEvent(data: any) {
+				if (shouldCancel) {
+					article.status = 'error';
+					article.error = 'Abgebrochen';
+					renderArticleCard(article, articles.indexOf(article));
+					updateProgress();
+					resolve(null);
+					return;
+				}
+
+				switch (data.step) {
+					case 'generating_title':
+						updateStep('generating_title', 'in_progress');
+						break;
+					case 'title_complete':
+						article.title = data.title;
+						article.description = data.description;
+						updateStep('generating_title', 'completed');
+						break;
+					case 'generating_content':
+						updateStep('generating_content', 'in_progress');
+						break;
+					case 'content_complete':
+						article.wordCount = data.wordCount;
+						article.readingTime = data.readingTime;
+						updateStep('generating_content', 'completed', `${data.wordCount} Wörter`);
+						break;
+					case 'generating_image_prompt':
+						updateStep('generating_image_prompt', 'in_progress');
+						break;
+					case 'image_prompt_complete':
+						updateStep('generating_image_prompt', 'completed');
+						break;
+					case 'generating_image':
+						updateStep('generating_image', 'in_progress');
+						break;
+					case 'image_complete':
+						updateStep('generating_image', 'completed');
+						break;
+					case 'uploading':
+					case 'upload_complete':
+					case 'saving':
+						updateStep('uploading', 'in_progress');
+						break;
+					case 'complete':
+						updateStep('uploading', 'completed');
+						article.status = 'completed';
+						article.imageUrl = data.article.imageUrl;
+						renderArticleCard(article, articles.indexOf(article));
+						updateProgress();
+						addCompletedArticle({
+							id: data.article.id,
+							title: data.article.title,
+							imageUrl: data.article.imageUrl,
+							wordCount: data.article.wordCount
+						});
+						break;
+					case 'error':
+						article.status = 'error';
+						article.error = data.message;
+						const failedStep = article.steps.find(s => s.status === 'in_progress');
+						if (failedStep) failedStep.status = 'error';
+						renderArticleCard(article, articles.indexOf(article));
+						updateProgress();
+						showToast(`Fehler: ${data.message}`, 'error');
+						break;
+				}
+
+				renderArticleCard(article, articles.indexOf(article));
+			}
+
+			function updateStep(stepName: string, status: 'pending' | 'in_progress' | 'completed' | 'error', detail?: string) {
+				const step = article.steps.find(s => s.name === stepName);
+				if (step) {
+					step.status = status;
+					if (detail) step.detail = detail;
+				}
+			}
+		});
+	}
+
+	async function startGeneration() {
+		if (isGenerating) return;
+
+		isGenerating = true;
+		shouldCancel = false;
+		articles = [];
+		completedArticles = [];
+
+		// Reset UI
+		emptyState.classList.add('hidden');
+		progressIndicator.classList.remove('hidden');
+		startBtn.disabled = true;
+		startBtnText.textContent = 'Generiere...';
+		cancelBtn.classList.remove('hidden');
+		cancelBtn.classList.add('flex');
+		completedArticlesSection.classList.add('hidden');
+		completedArticlesList.innerHTML = '';
+		progressFeed.querySelectorAll('[id^="article-"]').forEach(el => el.remove());
+
+		// Determine count
+		let count = parseInt(countOverride.value) || 0;
+		if (count <= 0) {
+			// Fetch from pool status
+			try {
+				const response = await fetch('/api/pool-status');
+				const data = await response.json();
+				count = Math.max(1, data.needed);
+			} catch {
+				count = 1;
+			}
+		}
+
+		progressText.textContent = `0/${count}`;
+		progressBar.style.width = '0%';
+
+		showToast(`Generiere ${count} Artikel...`, 'info');
+
+		// Generate articles sequentially
+		const generatedTitles: string[] = [];
+		let successCount = 0;
+		let errorCount = 0;
+
+		for (let i = 0; i < count && !shouldCancel; i++) {
+			const title = await generateSingleArticle(generatedTitles, i);
+			if (title) {
+				generatedTitles.push(title);
+				successCount++;
+			} else {
+				errorCount++;
+			}
+		}
+
+		// Done
+		isGenerating = false;
+		startBtn.disabled = false;
+		startBtnText.textContent = 'Generation starten';
+		cancelBtn.classList.add('hidden');
+		cancelBtn.classList.remove('flex');
+
+		// Refresh pool status
+		await refreshPoolStatus();
+
+		// Show completion toast
+		if (shouldCancel) {
+			showToast('Generation abgebrochen', 'warning');
+		} else if (errorCount === 0) {
+			showToast(`${successCount} Artikel erfolgreich generiert!`, 'success');
+		} else {
+			showToast(`${successCount} generiert, ${errorCount} fehlgeschlagen`, errorCount > successCount ? 'error' : 'warning');
+		}
+	}
+
+	function cancelGeneration() {
+		shouldCancel = true;
+		showToast('Breche nach aktuellem Artikel ab...', 'warning');
+	}
+
+	// Event listeners
+	startBtn.addEventListener('click', startGeneration);
+	cancelBtn.addEventListener('click', cancelGeneration);
+</script>
+
+<style>
+	@keyframes spin {
+		from { transform: rotate(0deg); }
+		to { transform: rotate(360deg); }
+	}
+	.animate-spin {
+		animation: spin 1s linear infinite;
+	}
+</style>
